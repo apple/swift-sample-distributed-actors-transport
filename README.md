@@ -9,7 +9,7 @@ Sample application and `ActorTransport`, associated with `distributed actor` lan
 2. Move it to `Library/Developer/Toolchains/` and point the TOOLCHAIN env variable at it:
 
 ```
-export TOOLCHAIN=/Library/Developer/Toolchains/swift-PR-39019-1091.xctoolchain
+export TOOLCHAIN=/Library/Developer/Toolchains/swift-PR-39061-1098.xctoolchain
 ```
 
 To run the sample app, use the following command:
@@ -23,7 +23,8 @@ all necessary flags to build this pre-release feature are already enabled as uns
 If you wanted to perform the invocation manually, it would look something like this:
 
 ```
-DYLD_LIBRARY_PATH=$TOOLCHAIN/usr/lib/swift/macosx $TOOLCHAIN/usr/bin/swift run -c debug -Xswiftc -Xfrontend -Xswiftc -validate-tbd-against-ir=none -Xswiftc -target -Xswiftc x86_64-apple-macos12.0 -Xswiftc -Xfrontend -Xswiftc -enable-experimental-distributed
+export TOOLCHAIN=/Library/Developer/Toolchains/swift-PR-39087-1109.xctoolchain
+DYLD_LIBRARY_PATH=$TOOLCHAIN/usr/lib/swift/macosx $TOOLCHAIN/usr/bin/swift run FishyActorsDemo
 ```
 
 setting the `DYLD_LIBRARY_PATH` is important, so don't forget it.

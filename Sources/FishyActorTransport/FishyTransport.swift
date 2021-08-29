@@ -85,7 +85,13 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
     self.group = group
     self.lock = Lock()
     self.managed = [:]
-    self.client = HTTPClient(eventLoopGroupProvider: .shared(group.next())) // we're reusing the EL, just so we have few threads involved in the sample app
+
+    // This naive transport implementation reuses HTTP as the underlying transport layer.
+    // Real implementations are likely to use specialized protocols, however it is simple
+    // to reuse the existing HTTP client for this example application.
+    //
+    // we're reusing the EL, just so we have few threads involved in the sample app
+    self.client = HTTPClient(eventLoopGroupProvider: .shared(group.next()))
 
     self.server = FishyServer(group: group, transport: self)
     try self.server.bootstrap(host: host, port: port)
@@ -116,7 +122,7 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
 
   public func actorReady<Act>(_ actor: Act) where Act: DistributedActor {
     log.debug("actorReady(\(actor.id))")
-    guard let recipient = actor as? MessageRecipient else {
+    guard actor is MessageRecipient else {
       fatalError("\(actor) is not a MessageRecipient! Missing conformance / source generation?")
     }
 
@@ -192,7 +198,7 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
     let requestURI = String("http://" + recipientURI)
 
     let response = try await sendHTTPRequest(requestURI: requestURI, requestData: requestData)
-    log.debug("GOT RESPONSE: \(response), payload: \(response.body?.getString(at: 0, length: response.body?.readableBytes ?? 0))")
+    log.debug("GOT RESPONSE: \(response), payload: \(response.body?.getString(at: 0, length: response.body?.readableBytes ?? 0) ?? "")")
 
     return response
   }
@@ -341,6 +347,18 @@ public struct Envelope: Sendable, Codable {
 /// Pass this to `send` to avoid decoding any value from the response.
 public enum NoResponse: Codable {
   case _instance
+}
+
+extension DistributedActor {
+  public nonisolated var requireFishyTransport: FishyTransport {
+    guard let fishy = actorTransport as? FishyTransport else {
+      fatalError("""
+                 'Generated' \(#function) not compatible with underlying transport.
+                 Expected \(FishyTransport.self) but got: \(type(of: self.actorTransport))
+                 """)
+    }
+    return fishy
+  }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

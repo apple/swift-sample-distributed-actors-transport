@@ -27,7 +27,7 @@ public protocol TopLevelEncoder {
   func encode<T>(_ value: T) throws -> Output where T : Encodable
 }
 
-extension JSONEncoder: TopLevelEncoder {
+extension JSONEncoder: @unchecked Sendable, TopLevelEncoder {
   typealias Input = Data
 }
 
@@ -40,6 +40,6 @@ public protocol TopLevelDecoder {
   func decode<T>(_ type: T.Type, from data: Input) throws -> T where T : Decodable
 }
 
-extension JSONDecoder: TopLevelDecoder {
+extension JSONDecoder: @unchecked Sendable, TopLevelDecoder {
   typealias Output = Data
 }

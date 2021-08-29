@@ -60,12 +60,8 @@ private final class HTTPHandler: ChannelInboundHandler, RemovableChannelHandler 
   }
 
   func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-    let reqPart = self.unwrapInboundIn(data)
-
     switch unwrapInboundIn(data) {
     case .head(let head):
-      // print("Got message to: \(head.uri)")
-
       guard case .POST = head.method else {
         self.respond405(context: context)
         return
@@ -75,21 +71,11 @@ private final class HTTPHandler: ChannelInboundHandler, RemovableChannelHandler 
       state.requestReceived()
 
     case .body(var bytes):
-      if (state == State.idle) {
-        print("EXIT")
-        return
-      }
-
-      // print("Got bytes: \(bytes.getString(at: 0, length: bytes.readableBytes)!)")
+      if (state == State.idle) { return }
       messageBytes.writeBuffer(&bytes)
 
     case .end:
-      if (state == State.idle) {
-        print("EXIT")
-        return
-      }
-
-      // print("Message complete: \(messageRecipientURI)")
+      if (state == State.idle) { return }
       onMessageComplete(context: context, messageBytes: messageBytes)
       state.requestComplete()
       messageBytes.clear()
@@ -100,14 +86,12 @@ private final class HTTPHandler: ChannelInboundHandler, RemovableChannelHandler 
   func onMessageComplete(context: ChannelHandlerContext, messageBytes: ByteBuffer) {
     let decoder = JSONDecoder()
     decoder.userInfo[.actorTransportKey] = transport
-    // print("[\(#file):\(#line)](\(#function)) \(messageBytes.getString(at: 0, length: messageBytes.readableBytes)!)")
-    
+
     let envelope: Envelope
     do {
       envelope = try decoder.decode(Envelope.self, from: messageBytes)
-      // print("[\(#file):\(#line)](\(#function)) \(envelope)")
     } catch {
-      // print("[\(#file):\(#line)](\(#function)) Error: \(error), JSON: \(messageBytes.getString(at: 0, length: messageBytes.readableBytes)!)")
+      // TODO: log the error
       return
     }
     let promise = context.eventLoop.makePromise(of: Data.self)
