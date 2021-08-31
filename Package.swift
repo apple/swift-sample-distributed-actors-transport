@@ -65,7 +65,7 @@ let package = Package(
       .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.5.0"),
       .package(url: "https://github.com/apple/swift-argument-parser", from: "0.4.0"),
 //      .package(url: "https://github.com/apple/swift-syntax.git", .revision("swift-5.5-DEVELOPMENT-SNAPSHOT-2021-08-28-a")) // TODO: can't use since 'The loaded '_InternalSwiftSyntaxParser' library is from a toolchain that is not compatible with this version of SwiftSyntax'
-      .package(url: "https://github.com/apple/swift-syntax.git", .branch("main")) // FIXME: needs better versioned tags
+      .package(url: "https://github.com/apple/swift-syntax.git", branch: "main") // FIXME: needs better versioned tags
       // ==== END OF DEPENDENCIES OF TRANSPORT ==== //
     ],
     targets: [
@@ -86,7 +86,6 @@ let package = Package(
             "FishyActorTransportPlugin",
           ]
       ),
-
 
       .target(
           name: "FishyActorTransport",

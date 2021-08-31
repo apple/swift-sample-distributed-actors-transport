@@ -80,6 +80,9 @@ final class Analysis: SyntaxVisitor {
     }
   }
 
+  // ==== ----------------------------------------------------------------------
+
+
   func isDistributedActor(_ node: ClassDeclSyntax) -> Bool {
     let isActor = node.classOrActorKeyword.text == "actor"
     guard isActor else {

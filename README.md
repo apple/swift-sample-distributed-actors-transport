@@ -29,4 +29,48 @@ DYLD_LIBRARY_PATH=$TOOLCHAIN/usr/lib/swift/macosx $TOOLCHAIN/usr/bin/swift run F
 
 setting the `DYLD_LIBRARY_PATH` is important, so don't forget it.
 
-Notice we're also passing the `-frontend -enable-experimental-distributed` flag. The same flag is already preconfigured in SwiftPM settings, however this is another way to pass it explicitly, if you'd like to play around in existing projects or command line.
+### Experimental flags
+
+> This project showcases **EXPERIMENTAL** language features, and in order to access them the `-enable-experimental-distributed` flag must be set.
+
+The project is pre-configured with a few experimental flags that are necessary to enable distributed actors, these are configured in each target's `swiftSettings`:
+
+```swift
+      .target(
+          name: "FishyActorTransport",
+          dependencies: [
+            ...
+          ],
+          swiftSettings: [
+            .unsafeFlags([
+              "-Xfrontend", "-enable-experimental-distributed",
+              "-Xfrontend", "-validate-tbd-against-ir=none",
+              "-Xfrontend", "-disable-availability-checking", // availability does not matter since _Distributed is not part of the SDK at this point
+            ])
+          ]),
+```
+
+## SwiftPM Plugin
+
+Distributed actor transports are expected to ship with an associated SwiftPM plugin that takes care of source generating the necessary "glue" between distributed functions and the transport runtime.
+
+Plugins are run automatically when the project is build, and therefore add no hassle to working with distributed actors.
+
+### Verbose mode
+
+It is possible to force the plugin to run in `--verbose` mode by setting the `VERBOSE` environment variable, like this:
+
+
+```
+VERBOSE=true DYLD_LIBRARY_PATH=$TOOLCHAIN/usr/lib/swift/macosx $TOOLCHAIN/usr/bin/swift run FishyActorsDemo
+       ^
+/Users/ktoso/code/fishy-actor-transport/Package.swift:68:67: warning: 'branch' is deprecated
+      .package(url: "https://github.com/apple/swift-syntax.git", .branch("main")) // FIXME: needs better versioned tags
+                                                                  ^
+Analyze: file:///Users/ktoso/code/fishy-actor-transport/Sources/FishyActorsDemo/_PrettyDemoLogger.swift
+Analyze: file:///Users/ktoso/code/fishy-actor-transport/Sources/FishyActorsDemo/Actors.swift
+  Detected distributed actor: ChatRoom
+Analyze: file:///Users/ktoso/code/fishy-actor-transport/Sources/FishyActorsDemo/main.swift
+Generate extensions...
+  Generate 'FishyActorTransport' extensions for 'distributed actor ChatRoom' -> file:///Users/ktoso/code/fishy-actor-transport/.build/plugins/outputs/fishy-actor-transport/FishyActorsDemo/FishyActorTransportPlugin/GeneratedFishyActors_1.swift
+```
