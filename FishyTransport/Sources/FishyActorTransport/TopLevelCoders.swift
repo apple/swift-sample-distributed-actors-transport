@@ -22,8 +22,8 @@ import NIOFoundationCompat
 // MARK: Encoding
 
 // TODO(swift): should be lifted into stdlib; in order to not depend on Combine
-public protocol TopLevelEncoder {
-  associatedtype Output
+public protocol TopLevelEncoder: Sendable {
+  associatedtype Output: Sendable
   func encode<T>(_ value: T) throws -> Output where T : Encodable
 }
 
@@ -35,7 +35,7 @@ extension JSONEncoder: @unchecked Sendable, TopLevelEncoder {
 // MARK: Decoding
 
 // TODO(swift): should be lifted into stdlib; in order to not depend on Combine
-public protocol TopLevelDecoder {
+public protocol TopLevelDecoder: Sendable {
   associatedtype Input
   func decode<T>(_ type: T.Type, from data: Input) throws -> T where T : Decodable
 }
@@ -43,3 +43,6 @@ public protocol TopLevelDecoder {
 extension JSONDecoder: @unchecked Sendable, TopLevelDecoder {
   typealias Output = Data
 }
+
+// This is a hack
+extension Data: @unchecked Sendable {}

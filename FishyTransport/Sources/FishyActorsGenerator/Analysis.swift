@@ -2,7 +2,7 @@
 //
 // This source file is part of the fishy-actor-transport open source project
 //
-// Copyright (c) 2018 Apple Inc. and the fishy-actor-transport project authors
+// Copyright (c) 2021 Apple Inc. and the fishy-actor-transport project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -47,7 +47,7 @@ final class Analysis: SyntaxVisitor {
 
   func analyze(file path: URL) throws {
     if verbose {
-      print("Analyze: \(path)")
+      print("Analyze: \(path.relativePath)")
     }
     let sourceFile = try SyntaxParser.parse(path)
     self.walk(sourceFile)
@@ -61,7 +61,7 @@ final class Analysis: SyntaxVisitor {
     }
 
     if verbose {
-      print("  Detected distributed actor: \(node.identifier.text)")
+      print("  Detected distributed actor: \(Bold)\(node.identifier.text)\(Reset)")
     }
     
     self.currentDecl = DistributedActorDecl(
@@ -130,7 +130,7 @@ final class Analysis: SyntaxVisitor {
     actorDecl.funcs.append(fun)
 
     if verbose {
-      print("    Detected distributed func: \(fun.name)")
+      print("    Detected distributed func: \(Bold)\(fun.name)\(Reset)")
     }
 
     currentDecl = actorDecl

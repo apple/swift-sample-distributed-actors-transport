@@ -164,7 +164,7 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
 
     let response = try await sendEnvelopeRequest(message, to: recipient, encoder: encoder)
 
-    // Short-circut if we allowed Void to be passed as the `responseType`...
+    // Short-circuit if we allowed Void to be passed as the `responseType`...
     // Right now we don't since it is not Codable, but we could consider it.
     if (responseType == NoResponse.self) {
       return (NoResponse._instance as! Response)
@@ -179,7 +179,6 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
       log.debug("try decoding as \(Response.self)")
       return try decoder.decode(Response.self, from: responseBody)
     } catch {
-      fatalError("ERROR: \(error)")
       throw FishySerializationError.unableToDecodeResponse(responseBody, expectedType: Response.self, error)
     }
   }

@@ -2,7 +2,7 @@
 //
 // This source file is part of the fishy-actor-transport open source project
 //
-// Copyright (c) 2018 Apple Inc. and the fishy-actor-transport project authors
+// Copyright (c) 2021 Apple Inc. and the fishy-actor-transport project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,6 +14,10 @@
 
 import Foundation
 import ArgumentParser
+
+// very naive pretty printing
+let Bold = "\u{001B}[0;1m"
+let Reset = "\u{001B}[0;0m"
 
 struct FishyActorsGeneratorMain: ParsableCommand {
   @Flag(help: "Print verbose logs")

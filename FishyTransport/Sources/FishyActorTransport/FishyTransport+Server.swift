@@ -19,7 +19,7 @@ import NIOHTTP1
 import Foundation
 import _NIOConcurrency
 
-private final class HTTPHandler: ChannelInboundHandler, RemovableChannelHandler {
+private final class HTTPHandler: @unchecked Sendable, ChannelInboundHandler, RemovableChannelHandler {
   typealias InboundIn = HTTPServerRequestPart
   typealias OutboundOut = HTTPServerResponsePart
 
