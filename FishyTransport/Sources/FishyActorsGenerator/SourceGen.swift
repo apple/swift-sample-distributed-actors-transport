@@ -171,6 +171,8 @@ final class SourceGen {
     extension ChatRoom: FishyActorTransport.MessageRecipient {
       enum _Message: Sendable, Codable {
         case join(chatter: Chatter)
+        case message(message: String, from: Chatter)
+        case leave(chatter: Chatter)
         // TODO: normally also offer: case _unknown
       }
       
@@ -189,6 +191,12 @@ final class SourceGen {
           case .join(let chatter):
             let response = try await self.join(chatter: chatter)
             return try encoder.encode(response)
+          case .message(let message, let chatter):
+            try await self.message(message, from: chatter)
+            return try encoder.encode(Optional<String>.none)
+          case .leave(let chatter): 
+            try await self.leave(chatter: chatter)
+            return try encoder.encode(Optional<String>.none)
           }
         } catch {
           fatalError("Error handling not implemented; \\(error)")
@@ -200,6 +208,20 @@ final class SourceGen {
         let fishy = self.requireFishyTransport
         let message = Self._Message.join(chatter: chatter)
         return try await fishy.send(message, to: self.id, expecting: String.self)
+      }
+
+      @_dynamicReplacement (for :_remote_message(_:from:))
+      nonisolated func _fishy_message(_ message: String, from chatter: Chatter) async throws {
+        let fishy = self.requireFishyTransport
+        let message = Self._Message.message(message: message, from: chatter)
+        return try await fishy.send(message, to: self.id, expecting: Void.self)
+      }
+
+      @_dynamicReplacement (for :_remote_leave(chatter:))
+      nonisolated func _fishy_leave(chatter: Chatter) async throws {
+        let fishy = self.requireFishyTransport
+        let message = Self._Message.leave(chatter: chatter)
+        return try await fishy.send(message, to: self.id, expecting: Void.self)
       }
     }
 

@@ -31,7 +31,7 @@ distributed actor ChatRoom {
   var chatters: Set<Chatter>
 
   init(topic: String, transport: ActorTransport) {
-    defer { transport.actorReady(self) } // TODO(distributed): will be synthesized
+    defer { transport.actorReady(self) } // FIXME(distributed): this will be synthesized (not implemented in compiler yet)
 
     self.topic = topic
     self.chatters = []
@@ -57,8 +57,21 @@ distributed actor ChatRoom {
     return "Welcome to the '\(topic)' chat room! (chatters: \(chatters.count))"
   }
 
+  distributed func message(_ message: String, from chatter: Chatter) async {
+    print("[\(self.simpleID)] Forwarding message from [\(chatter.simpleID)] to \(max(0, chatters.count - 1)) other chatters...")
+
+    /// Forward the message to all other chatters concurrently
+    await withThrowingTaskGroup(of: Void.self) { group in
+      for other in chatters where chatter != other {
+        group.addTask {
+          try await other.chatRoomMessage(message, from: chatter)
+        }
+      }
+    }
+  }
+
   distributed func leave(chatter: Chatter) {
-    print("[\(self.simpleID)] chatter left the room: \(chatter)")
+    print("[\(self.simpleID)] chatter left the room (\(topic)): \(chatter)")
     chatters.remove(chatter)
 
     // TODO: notify the others
@@ -70,14 +83,14 @@ distributed actor Chatter {
   var rooms: [ChatRoom: Set<Chatter>] = [:]
 
   init(transport: ActorTransport) {
-    defer { transport.actorReady(self) } // FIXME(distributed): this will be synthesized
+    defer { transport.actorReady(self) } // FIXME(distributed): this will be synthesized (not implemented in compiler yet)
   }
 
   distributed func join(room: ChatRoom) async throws {
     // join the chat-room
     let welcomeMessage = try await room.join(chatter: self)
 
-    // seems we joined successfully, might as well just add ourselfs right away
+    // seems we joined successfully, might as well just add ourselves right away
     rooms[room, default: []].insert(self)
 
     print("[\(self.simpleID)] \(welcomeMessage)")
@@ -85,7 +98,7 @@ distributed actor Chatter {
 
   // Every chat room we're in will keep us posted about chatters joining the room.
   // This way we can notice when our friend joined the room and send them a direct message etc.
-  distributed func chatterJoined(room: ChatRoom, chatter: Chatter) {
+  distributed func chatterJoined(room: ChatRoom, chatter: Chatter) async throws {
     guard chatter != self else {
       // we shouldn't be getting such message, but even if we did, we can ignore
       // the information that we joined the room, because we already know this
@@ -96,6 +109,17 @@ distributed actor Chatter {
     rooms[room, default: []].insert(chatter)
     print("[\(self.simpleID)] Chatter [\(chatter.simpleID)] joined [\(room.simpleID)] " +
           "(total known members in room \(rooms[room]?.count ?? 0) (including self))")
+
+    let greeting = [
+      "Hi there, ",
+      "Hello",
+      "Hi",
+      "Welcome",
+      "Long time no see",
+      "Hola",
+    ].shuffled().first!
+
+    try await room.message("\(greeting) [\(chatter.simpleID)]!", from: self)
   }
 
   distributed func chatRoomMessage(_ message: String, from chatter: Chatter) {

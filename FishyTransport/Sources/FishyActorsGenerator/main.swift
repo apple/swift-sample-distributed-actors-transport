@@ -43,6 +43,10 @@ struct FishyActorsGeneratorMain: ParsableCommand {
     if verbose {
       print("Generate extensions...")
     }
+
+    // TODO: if/when the plugin would be a complete implementation, remove this warning
+    print("WARNING: This is only a *mock* sample plugin implementation, real functions won't be generated!")
+
     let sourceGen = SourceGen(targetDirectory: targetDirectory, buckets: buckets)
     for decl in analysis.decls {
       if verbose {
