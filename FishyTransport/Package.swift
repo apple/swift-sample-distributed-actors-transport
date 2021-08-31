@@ -3,6 +3,12 @@
 
 import PackageDescription
 
+let experimentalFlags = [
+  "-Xfrontend", "-enable-experimental-distributed",
+  "-Xfrontend", "-validate-tbd-against-ir=none",
+  "-Xfrontend", "-disable-availability-checking", // availability does not matter since _Distributed is not part of the SDK at this point
+]
+
 /******************************************************************************/
 /************************************ CAVEAT **********************************/
 /******************************************************************************/
@@ -16,21 +22,11 @@ import PackageDescription
 // directly, but rather use it as an inspiration for what COULD be done using this
 // language feature.
 let package = Package(
-    name: "swift-sample-distributed-actors-transport",
+    name: "sample-fishy-transport",
     platforms: [
       .macOS(.v12),
     ],
     products: [
-      // our example app
-      .executable(
-          name: "FishyActorsDemo",
-          targets: [
-            "FishyActorsDemo"
-          ]
-      ),
-
-      // ==== DISTRIBUTED ACTOR TRANSPORT LIBRARY ==== //
-
       .library(
           name: "FishyActorTransport",
           targets: [
@@ -51,14 +47,8 @@ let package = Package(
           targets: [
             "FishyActorsGenerator"
           ])
-      // ==== END OF DISTRIBUTED ACTOR TRANSPORT LIBRARY ==== //
     ],
     dependencies: [
-      // ==== DEPENDENCIES OF DEMO ==== //
-      // it would depend on:
-      // .package(url: ".../fishy-transport.git", from: "1.0.0"),
-      // ==== END OF DEPENDENCIES OF DEMO ==== //
-
       // ==== DEPENDENCIES OF TRANSPORT ==== //
       .package(url: "https://github.com/apple/swift-log.git", from: "1.2.0"),
       .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
@@ -69,24 +59,6 @@ let package = Package(
       // ==== END OF DEPENDENCIES OF TRANSPORT ==== //
     ],
     targets: [
-      .executableTarget(
-          name: "FishyActorsDemo",
-          dependencies: [
-            "FishyActorTransport",
-            .product(name: "ArgumentParser", package: "swift-argument-parser"),
-          ],
-          swiftSettings: [
-            .unsafeFlags([
-              "-Xfrontend", "-enable-experimental-distributed",
-              "-Xfrontend", "-validate-tbd-against-ir=none", // FIXME: slight issue in distributed synthesis
-              "-Xfrontend", "-disable-availability-checking", // availability does not matter since _Distributed is not part of the SDK at this point
-            ])
-          ],
-          plugins: [
-            "FishyActorTransportPlugin",
-          ]
-      ),
-
       .target(
           name: "FishyActorTransport",
           dependencies: [
@@ -96,14 +68,10 @@ let package = Package(
             .product(name: "AsyncHTTPClient", package: "async-http-client"),
           ],
           swiftSettings: [
-            .unsafeFlags([
-              "-Xfrontend", "-enable-experimental-distributed",
-              "-Xfrontend", "-validate-tbd-against-ir=none",
-              "-Xfrontend", "-disable-availability-checking", // availability does not matter since _Distributed is not part of the SDK at this point
-            ])
+            .unsafeFlags(experimentalFlags)
           ]),
 
-      // === Plugin (provided by transport library) ----
+      // === Plugin -----
 
       .plugin(
           name: "FishyActorTransportPlugin",
@@ -122,17 +90,14 @@ let package = Package(
       ),
 
       // ==== Tests -----
+
       .testTarget(
-          name: "FishyActorsDemoTests",
+          name: "FishyActorTransportTests",
           dependencies: [
-            "FishyActorsDemo"
+            "FishyActorTransport"
           ],
           swiftSettings: [
-            .unsafeFlags([
-              "-Xfrontend", "-enable-experimental-distributed",
-              "-Xfrontend", "-validate-tbd-against-ir=none",
-              "-Xfrontend", "-disable-availability-checking", // availability does not matter since _Distributed is not part of the SDK at this point
-            ])
+            .unsafeFlags(experimentalFlags)
           ]
       ),
     ]

@@ -40,7 +40,7 @@ final class SourceGen {
 
     // TODO: Ugly, don't do this in init
     // Just make sure all "buckets" exist
-    for i in (1...buckets) {
+    for i in (0..<buckets) {
       let path = targetFilePath(targetDirectory: targetDirectory, i: i)
       try! SourceGen.header.write(to: path, atomically: true, encoding: .utf8)
     }

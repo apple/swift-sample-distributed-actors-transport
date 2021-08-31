@@ -6,3 +6,5 @@
 xcuserdata/
 DerivedData/
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+SampleApp/.build
+FishyTransport/.build
