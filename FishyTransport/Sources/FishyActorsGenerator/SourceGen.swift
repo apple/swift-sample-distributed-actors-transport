@@ -38,7 +38,7 @@ final class SourceGen {
     self.targetDirectory = targetDirectory
     self.buckets = buckets
 
-    // TODO: Ugly, don't do this in init
+    // TODO: Don't do this in init
     // Just make sure all "buckets" exist
     for i in (0..<buckets) {
       let path = targetFilePath(targetDirectory: targetDirectory, i: i)
@@ -62,20 +62,43 @@ final class SourceGen {
     // return into which output file the extensions were generated
     return targetURL
   }
-  
+
+  //*************************************************************************************//
+  //************************** CAVEAT ***************************************************//
+  //** A real implementation would utilize SwiftSyntaxBuilders rather than just String **//
+  //** formatting.                                                                     **//
+  //** See: https://github.com/apple/swift-syntax/tree/main/Sources/SwiftSyntaxBuilder **//
+  //*************************************************************************************//
+
   private func DEMO_generateChatter(to file: URL) throws {
     var sourceText = ""
 
     sourceText +=
     """
-    extension Chatter: MessageRecipient {
+    extension Chatter: FishyActorTransport.MessageRecipient {
+    """
+    sourceText += "\n"
+    // ==== Generate message representation,
+    // In our sample representation we do so by:
+    // --- for each distributed function
+    // -- emit a `case` that represents the function
+    //
+    sourceText += """
       enum _Message: Sendable, Codable {
         case join(room: ChatRoom)
         case chatRoomMessage(message: String, chatter: Chatter)
         case chatterJoined(room: ChatRoom, chatter: Chatter)
-        // TODO: normally also offer: case _unknown
+        // TODO: potentially also create an _unknown(name: String) case?
       }
-      
+    """
+    sourceText += "\n"
+    // ==== Generate the "receive"-side, we must decode the incoming Envelope
+    // into a _Message and apply it to our local actor.
+    //
+    // Some of this code could be pushed out into a transport implementation,
+    // specifically the serialization logic does not have to live in here as
+    // long as we get hold of the type we need to deserialize.
+    sourceText += """
       nonisolated func _receiveAny<Encoder, Decoder>(
         envelope: Envelope, encoder: Encoder, decoder: Decoder
       ) async throws -> Encoder.Output
@@ -101,40 +124,36 @@ final class SourceGen {
           return try encoder.encode(Optional<String>.none)
         }
       }
-      
+      """
+    sourceText += "\n"
+    sourceText += """
       @_dynamicReplacement (for :_remote_join(room:))
       nonisolated func _fishy_join(room: ChatRoom) async throws {
         let fishy = self.requireFishyTransport
         let message = Self._Message.join(room: room)
-        // TODO: sadly source gen has to specialize for the void return here
-        // if we made it possible to pass Void.self we could always return
-        // whatever send has returned here.
-        _ = try await fishy.send(message, to: self.id, expecting: NoResponse.self)
+        return try await fishy.send(message, to: self.id, expecting: Void.self)
       }
       
       @_dynamicReplacement (for :_remote_chatterJoined(room:chatter:))
       nonisolated func _fishy_chatterJoined(room: ChatRoom, chatter: Chatter) async throws {
         let fishy = self.requireFishyTransport
         let message = Self._Message.chatterJoined(room: room, chatter: chatter)
-        // TODO: sadly source gen has to specialize for the void return here
-        // if we made it possible to pass Void.self we could always return
-        // whatever send has returned here.
-        _ = try await fishy.send(message, to: self.id, expecting: NoResponse.self)
+        return try await fishy.send(message, to: self.id, expecting: Void.self)
       }
       
       @_dynamicReplacement (for :_remote_chatRoomMessage(_:from:))
       nonisolated func _fishy_chatRoomMessage(_ message: String, from chatter: Chatter) async throws {
         let fishy = self.requireFishyTransport
         let message = Self._Message.chatRoomMessage(message: message, chatter: chatter)
-        // TODO: sadly source gen has to specialize for the void return here
-        // if we made it possible to pass Void.self we could always return
-        // whatever send has returned here.
-        _ = try await fishy.send(message, to: self.id, expecting: NoResponse.self)
+        return try await fishy.send(message, to: self.id, expecting: Void.self)
       }
-    }
-
-
     """
+    sourceText += "\n"
+    sourceText += """
+    }
+    """
+    sourceText += "\n"
+    sourceText += "\n"
 
     let handle = try FileHandle(forWritingTo: file)
     handle.seekToEndOfFile()
@@ -149,7 +168,7 @@ final class SourceGen {
 
     sourceText +=
     """
-    extension ChatRoom: MessageRecipient {
+    extension ChatRoom: FishyActorTransport.MessageRecipient {
       enum _Message: Sendable, Codable {
         case join(chatter: Chatter)
         // TODO: normally also offer: case _unknown

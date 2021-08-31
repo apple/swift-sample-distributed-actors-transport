@@ -139,6 +139,13 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
     }
   }
 
+  public func send<Message: Sendable & Codable>(
+      _ message: Message, to recipient: AnyActorIdentity,
+      expecting responseType: Void.Type
+  ) async throws -> Void {
+    _ = try await self.send(message, to: recipient, expecting: NoResponse.self)
+  }
+
   public func send<Message: Sendable & Codable, Response: Sendable & Codable>(
     _ message: Message, to recipient: AnyActorIdentity,
     expecting responseType: Response.Type = Response.self
