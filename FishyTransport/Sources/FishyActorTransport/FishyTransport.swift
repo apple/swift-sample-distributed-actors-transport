@@ -110,18 +110,18 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
   public func resolve<Act>(_ identity: AnyActorIdentity, as actorType: Act.Type)
   throws -> Act? where Act: DistributedActor {
     let resolved: Act? = nil
-    log.info("resolve(\(identity), as: \(actorType)) -> \(String(describing: resolved))")
+    log.info("FishyTransport::resolve(\(identity), as: \(actorType)) -> \(String(describing: resolved))")
     return resolved
   }
 
   public func assignIdentity<Act>(_ actorType: Act.Type) -> AnyActorIdentity where Act: DistributedActor {
     let id = AnyActorIdentity(FishyIdentity(transport: self, type: "\(actorType)"))
-    log.debug("assignIdentity(\(actorType)) -> \(id)")
+    log.debug("FishyTransport::assignIdentity(\(actorType)) -> \(id)")
     return id
   }
 
   public func actorReady<Act>(_ actor: Act) where Act: DistributedActor {
-    log.debug("actorReady(\(actor.id))")
+    log.debug("FishyTransport::actorReady(\(actor))")
     guard actor is MessageRecipient else {
       fatalError("\(actor) is not a MessageRecipient! Missing conformance / source generation?")
     }
@@ -133,7 +133,7 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
   }
 
   public func resignIdentity(_ id: AnyActorIdentity) {
-    log.debug("resignIdentity(\(id))")
+    log.debug("FishyTransport::resignIdentity(\(id))")
     self.lock.withLockVoid {
       self.managed.removeValue(forKey: id)
     }
@@ -171,7 +171,7 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
     }
 
     guard let responseBody = response.body else {
-      log.debug("no body")
+      log.debug("No response body")
       throw FishyMessageError.missingResponsePayload(expected: responseType)
     }
 
@@ -197,14 +197,18 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
     var recipientURI: String.SubSequence = "\(recipient.underlying)"
 
     let requestData = try encoder.encode(envelope)
-    log.debug("SEND \(String(data: requestData, encoding: .utf8)!) TO \(recipientURI)")
+    log.debug("Send envelope request", metadata: [
+      "envelope": "\(String(data: requestData, encoding: .utf8)!)",
+      "recipient": "\(recipientURI)"
+    ])
 
-    // TODO: normally we'd keep a client (or pool) to a given
     recipientURI = recipientURI.dropFirst("fishy://".count) // our transport is super silly, and abuses http for its messaging
     let requestURI = String("http://" + recipientURI)
 
     let response = try await sendHTTPRequest(requestURI: requestURI, requestData: requestData)
-    log.debug("GOT RESPONSE: \(response), payload: \(response.body?.getString(at: 0, length: response.body?.readableBytes ?? 0) ?? "")")
+    log.debug("Received response \(response)", metadata: [
+      "response/payload": "\(response.body?.getString(at: 0, length: response.body?.readableBytes ?? 0) ?? "")"
+    ])
 
     return response
   }
@@ -220,7 +224,7 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
 
     let future = client.execute(
         request: request,
-        deadline: .now() + .seconds(3)) // TODO: actual deadlines here in a real project
+        deadline: .now() + .seconds(3)) // A real implementation would allow configuring these (i.e. pick up a task-local deadline)
 
     return try await future.get()
   }
