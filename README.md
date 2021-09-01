@@ -30,6 +30,47 @@ DYLD_LIBRARY_PATH=$TOOLCHAIN/usr/lib/swift/macosx $TOOLCHAIN/usr/bin/swift run F
 
 setting the `DYLD_LIBRARY_PATH` is important, so don't forget it.
 
+### Sample output
+
+The sample is a chat room application. It creates a few "nodes" and starts distributed actors on them. 
+
+There are two kinds of actors, a `ChatRoom` and `Chatter`s. A single node, representing a cloud component, hosts the chat room. And a few other nodes host chatters. Note that chatters can be on the same or on different nodes.
+
+As the application runs, chatters join the remote `ChatRoom` and say hello there.
+
+The chat room logs whenever a chatter joins the room, or sends a message:
+
+```
+// chat room logs
+[:8001/ChatRoom@130A3D1B-...] Chatter [:9003/Chatter@0A2F138C-...] joined this chat room about: 'Cute Capybaras'
+[:8001/ChatRoom@130A3D1B-...] Chatter [:9002/Chatter@8152F16D-...] joined this chat room about: 'Cute Capybaras'
+[:8001/ChatRoom@130A3D1B-...] Chatter [:9003/Chatter@4F3970DE-...] joined this chat room about: 'Cute Capybaras'
+[:8001/ChatRoom@130A3D1B-...] Forwarding message from [:9002/Chatter@8152F16D-...] to 2 other chatters...
+[:8001/ChatRoom@130A3D1B-...] Forwarding message from [:9003/Chatter@4F3970DE-...] to 2 other chatters...
+[:8001/ChatRoom@130A3D1B-...] Forwarding message from [:9003/Chatter@0A2F138C-...] to 2 other chatters...
+[:8001/ChatRoom@130A3D1B-...] Forwarding message from [:9002/Chatter@8152F16D-...] to 2 other chatters...
+[:8001/ChatRoom@130A3D1B-...] Forwarding message from [:9003/Chatter@4F3970DE-...] to 2 other chatters...
+```
+
+The chat room sends a `"Welcome ..."` message to a joining chatter, and forwards all other chat messages sent to the room to the chatter itself.
+A chatters logs look like this: 
+
+```
+// first chatter
+[:9002/Chatter@8152F16D-...] Welcome to the 'Cute Capybaras' chat room! (chatters: 2)
+[:9002/Chatter@8152F16D-...] Chatter [:9003/Chatter@0A2F138C-...] joined [:8001/ChatRoom@130A3D1B-...] (total known members in room 2 (including self))
+[:9002/Chatter@8152F16D-...]] :9003/Chatter@4F3970DE-... wrote: Welcome [:9003/Chatter@0A2F138C-...]!
+[:9002/Chatter@8152F16D-...]] :9003/Chatter@0A2F138C-... wrote: Long time no see [:9002/Chatter@8152F16D-...]!
+[:9002/Chatter@8152F16D-...] Chatter [:9003/Chatter@4F3970DE-...] joined [:8001/ChatRoom@130A3D1B-...] (total known members in room 3 (including self))
+[:9002/Chatter@8152F16D-...]] :9003/Chatter@4F3970DE-... wrote: Hi there,  [:9002/Chatter@8152F16D-...]!
+```
+
+Notice that the simplified ID printout contains the port number of the node the chatter is running on. In this example, the chatroom is running on port `8001` while the chatter is on `9002`. Other chatters may be on the same or on different "nodes" which are represented by actor transport instances. 
+
+This sample is a distributed application created from just a single process, but all the "nodes" communicate through networking with eachother.
+The same application could be launched on different physical hosts (and then would have different IP addresses), this is what location transparency of distributed actors enables us to do.
+
+
 ### Experimental flags
 
 > This project showcases **EXPERIMENTAL** language features, and in order to access them the `-enable-experimental-distributed` flag must be set.
@@ -64,14 +105,20 @@ It is possible to force the plugin to run in `--verbose` mode by setting the `VE
 
 ```
 VERBOSE=true DYLD_LIBRARY_PATH=$TOOLCHAIN/usr/lib/swift/macosx $TOOLCHAIN/usr/bin/swift run FishyActorsDemo
-       ^
-/Users/ktoso/code/fishy-actor-transport/Package.swift:68:67: warning: 'branch' is deprecated
-      .package(url: "https://github.com/apple/swift-syntax.git", .branch("main")) // FIXME: needs better versioned tags
-                                                                  ^
-Analyze: file:///Users/ktoso/code/fishy-actor-transport/Sources/FishyActorsDemo/_PrettyDemoLogger.swift
-Analyze: file:///Users/ktoso/code/fishy-actor-transport/Sources/FishyActorsDemo/Actors.swift
+
+Analyze: /Users/ktoso/code/fishy-actor-transport/SampleApp/Sources/FishyActorsDemo/_PrettyDemoLogger.swift
+Analyze: /Users/ktoso/code/fishy-actor-transport/SampleApp/Sources/FishyActorsDemo/Actors.swift
   Detected distributed actor: ChatRoom
-Analyze: file:///Users/ktoso/code/fishy-actor-transport/Sources/FishyActorsDemo/main.swift
+    Detected distributed func: join
+    Detected distributed func: message
+    Detected distributed func: leave
+  Detected distributed actor: Chatter
+    Detected distributed func: join
+    Detected distributed func: chatterJoined
+    Detected distributed func: chatRoomMessage
+Analyze: /Users/ktoso/code/fishy-actor-transport/SampleApp/Sources/FishyActorsDemo/main.swift
 Generate extensions...
-  Generate 'FishyActorTransport' extensions for 'distributed actor ChatRoom' -> file:///Users/ktoso/code/fishy-actor-transport/.build/plugins/outputs/fishy-actor-transport/FishyActorsDemo/FishyActorTransportPlugin/GeneratedFishyActors_1.swift
+WARNING: This is only a *mock* sample plugin implementation, real functions won't be generated!
+  Generate 'FishyActorTransport' extensions for 'distributed actor ChatRoom' -> file:///Users/ktoso/code/fishy-actor-transport/SampleApp/.build/plugins/outputs/sampleapp/FishyActorsDemo/FishyActorTransportPlugin/GeneratedFishyActors_1.swift
+  Generate 'FishyActorTransport' extensions for 'distributed actor Chatter' -> file:///Users/ktoso/code/fishy-actor-transport/SampleApp/.build/plugins/outputs/sampleapp/FishyActorsDemo/FishyActorTransportPlugin/GeneratedFishyActors_1.swift
 ```
