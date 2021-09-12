@@ -49,15 +49,7 @@ final class SourceGen {
   func generate(decl: DistributedActorDecl) -> URL {
     let targetURL = targetFilePath(targetDirectory: targetDirectory, i: 1) // TODO: hardcoded for now, would use bucketing approach to avoid re-generating too many sources
 
-    // TODO: this is hardcoded for the Demo/Sample, but normally we'd analyze the decl and generate the apropriate functions.
-    // The synthesis is not very interesting, basically "for each function, make a _impl_ function" and "forward all params to the _Message" etc.
-    if (decl.name == "Chatter") {
-      try! DEMO_generateChatter(to: targetURL)
-    } else if decl.name == "ChatRoom" {
-      try! DEMO_generateChatRoom(to: targetURL)
-    } else {
-      fatalError("SIMPLE SAMPLE/DEMO SOURCE GENERATOR: is not able to handle any distributed actor; This is just an example how these things fit together.")
-    }
+      try! generateSources(for: decl, to: targetURL)
 
     // return into which output file the extensions were generated
     return targetURL
@@ -70,12 +62,12 @@ final class SourceGen {
   //** See: https://github.com/apple/swift-syntax/tree/main/Sources/SwiftSyntaxBuilder **//
   //*************************************************************************************//
 
-  private func DEMO_generateChatter(to file: URL) throws {
+    private func generateSources(for decl: DistributedActorDecl, to file: URL) throws {
     var sourceText = ""
 
     sourceText +=
     """
-    extension Chatter: FishyActorTransport.MessageRecipient {
+    extension \(decl.name): FishyActorTransport.MessageRecipient {
     """
     sourceText += "\n"
     // ==== Generate message representation,
@@ -85,13 +77,33 @@ final class SourceGen {
     //
     sourceText += """
       enum _Message: Sendable, Codable {
-        case join(room: ChatRoom)
-        case chatRoomMessage(message: String, chatter: Chatter)
-        case chatterJoined(room: ChatRoom, chatter: Chatter)
-        // TODO: potentially also create an _unknown(name: String) case?
-      }
+
     """
-    sourceText += "\n"
+
+        for fun in decl.funcs {
+            sourceText += "case \(fun.name)"
+            guard !fun.params.isEmpty else {
+                sourceText += "\n"
+                continue
+            }
+            sourceText += "("
+
+            var first = true
+            for (label, _, type) in fun.params {
+                sourceText += first ? "" : ", "
+                if let label = label, label != "_" {
+                    sourceText += "\(label): \(type)"
+                } else {
+                    sourceText += type
+                }
+
+                first = false
+            }
+
+            sourceText += ")\n"
+        }
+
+    sourceText += "}\n"
     // ==== Generate the "receive"-side, we must decode the incoming Envelope
     // into a _Message and apply it to our local actor.
     //
@@ -110,130 +122,131 @@ final class SourceGen {
       nonisolated func _receive<Encoder>(
         message: _Message, encoder: Encoder
       ) async throws -> Encoder.Output where Encoder: TopLevelEncoder {
-        switch message {
-        case .join(let room):
-          try await self.join(room: room)
-          return try encoder.encode(Optional<String>.none)
-        
-        case .chatRoomMessage(let message, let chatter):
-          try await self.chatRoomMessage(message, from: chatter)
-          return try encoder.encode(Optional<String>.none)
-        
-        case .chatterJoined(let room, let chatter):
-          try await self.chatterJoined(room: room, chatter: chatter)
-          return try encoder.encode(Optional<String>.none)
-        }
-      }
-      """
-    sourceText += "\n"
-    sourceText += """
-      @_dynamicReplacement (for :_remote_join(room:))
-      nonisolated func _fishy_join(room: ChatRoom) async throws {
-        let fishy = self.requireFishyTransport
-        let message = Self._Message.join(room: room)
-        return try await fishy.send(message, to: self.id, expecting: Void.self)
-      }
-      
-      @_dynamicReplacement (for :_remote_chatterJoined(room:chatter:))
-      nonisolated func _fishy_chatterJoined(room: ChatRoom, chatter: Chatter) async throws {
-        let fishy = self.requireFishyTransport
-        let message = Self._Message.chatterJoined(room: room, chatter: chatter)
-        return try await fishy.send(message, to: self.id, expecting: Void.self)
-      }
-      
-      @_dynamicReplacement (for :_remote_chatRoomMessage(_:from:))
-      nonisolated func _fishy_chatRoomMessage(_ message: String, from chatter: Chatter) async throws {
-        let fishy = self.requireFishyTransport
-        let message = Self._Message.chatRoomMessage(message: message, chatter: chatter)
-        return try await fishy.send(message, to: self.id, expecting: Void.self)
-      }
-    """
-    sourceText += "\n"
-    sourceText += """
-    }
-    """
-    sourceText += "\n"
-    sourceText += "\n"
-
-    let handle = try FileHandle(forWritingTo: file)
-    handle.seekToEndOfFile()
-    let textData = sourceText.data(using: .utf8)!
-    handle.write(textData)
-    try handle.synchronize()
-    handle.closeFile()
-  }
-  
-  private func DEMO_generateChatRoom(to file: URL) throws {
-    var sourceText = ""
-
-    sourceText +=
-    """
-    extension ChatRoom: FishyActorTransport.MessageRecipient {
-      enum _Message: Sendable, Codable {
-        case join(chatter: Chatter)
-        case message(message: String, from: Chatter)
-        case leave(chatter: Chatter)
-        // TODO: normally also offer: case _unknown
-      }
-      
-      nonisolated func _receiveAny<Encoder, Decoder>(
-        envelope: Envelope, encoder: Encoder, decoder: Decoder
-      ) async throws -> Encoder.Output where Encoder: TopLevelEncoder, Decoder: TopLevelDecoder {
-        let message = try decoder.decode(_Message.self, from: envelope.message as! Decoder.Input) // TODO: this would have to be restructured to avoid the as!
-        return try await self._receive(message: message, encoder: encoder)
-      }
-      
-      nonisolated func _receive<Encoder>(
-      message: _Message, encoder: Encoder
-      ) async throws -> Encoder.Output where Encoder: TopLevelEncoder {
         do {
           switch message {
-          case .join(let chatter):
-            let response = try await self.join(chatter: chatter)
-            return try encoder.encode(response)
-          case .message(let message, let chatter):
-            try await self.message(message, from: chatter)
-            return try encoder.encode(Optional<String>.none)
-          case .leave(let chatter): 
-            try await self.leave(chatter: chatter)
-            return try encoder.encode(Optional<String>.none)
+
+      """
+
+        for fun in decl.funcs {
+            sourceText += "case .\(fun.name)\(fun.parameterMatch):\n"
+
+            if fun.result != "Void" {
+                sourceText += "let result = "
+            }
+
+            sourceText += "try await self.\(fun.name)("
+
+
+            sourceText += fun.params.map { param in
+                let (label, name, _) = param
+                if let label = label, label != "_" {
+                    return "\(label): \(name)"
+                }
+                return name
+            }.joined(separator: ", ")
+
+            sourceText += ")\n"
+
+            let returnValue = fun.result == "Void" ? "Optional<String>.none" : "result"
+
+            sourceText += "return try encoder.encode(\(returnValue))\n\n"
+        }
+
+        sourceText += """
           }
         } catch {
           fatalError("Error handling not implemented; \\(error)")
         }
       }
-      
-      @_dynamicReplacement (for :_remote_join(chatter:))
-      nonisolated func _fishy_join(chatter: Chatter) async throws -> String {
-        let fishy = self.requireFishyTransport
-        let message = Self._Message.join(chatter: chatter)
-        return try await fishy.send(message, to: self.id, expecting: String.self)
-      }
+      """
+    sourceText += "\n"
+        sourceText += decl.funcs.map { $0.dynamicReplacementFunc }.joined(separator: "\n\n")
 
-      @_dynamicReplacement (for :_remote_message(_:from:))
-      nonisolated func _fishy_message(_ message: String, from chatter: Chatter) async throws {
-        let fishy = self.requireFishyTransport
-        let message = Self._Message.message(message: message, from: chatter)
-        return try await fishy.send(message, to: self.id, expecting: Void.self)
-      }
 
-      @_dynamicReplacement (for :_remote_leave(chatter:))
-      nonisolated func _fishy_leave(chatter: Chatter) async throws {
-        let fishy = self.requireFishyTransport
-        let message = Self._Message.leave(chatter: chatter)
-        return try await fishy.send(message, to: self.id, expecting: Void.self)
-      }
+        sourceText += "\n"
+    sourceText += """
     }
-
-
     """
+    sourceText += "\n"
+    sourceText += "\n"
+
 
     let handle = try FileHandle(forWritingTo: file)
     handle.seekToEndOfFile()
-    let textData = sourceText.data(using: .utf8)!
-    handle.write(textData)
+        handle.write(Data(sourceText.utf8))
     try handle.synchronize()
     handle.closeFile()
   }
-  
+}
+
+extension FuncDecl {
+    var dynamicReplacementFunc: String {
+        """
+            @_dynamicReplacement(for: _remote_\(name)(\(prototype)))
+            nonisolated func _fishy_\(name)(\(argumentList)) async throws \(funcReturn) {
+                let message = Self._Message.\(name)\(messageArguments)
+                return try await requireFishyTransport.send(message, to: self.id, expecting: \(result).self)
+            }
+        """
+    }
+
+    var funcReturn: String {
+        return result != "Void" ? "-> \(result)" : ""
+    }
+
+    var prototype: String {
+        params.map { param in
+            let (label, name, _) = param
+            var result = ""
+            result += label ?? name
+            result += ":"
+            return result
+        }.joined()
+    }
+
+    var argumentList: String {
+        params.map { param in
+            let (label, name, type) = param
+            var result = ""
+
+            if let label = label {
+                result += label
+            }
+
+            if name != label {
+                result += " \(name)"
+            }
+
+            result += ": \(type)"
+
+            return result
+        }.joined(separator: ", ")
+    }
+
+    var messageArguments: String {
+        guard !params.isEmpty else {
+            return ""
+        }
+
+        return "(" + params.map { param in
+            let (label, name, _) = param
+            if let label = label, label != "_" {
+                return "\(label): \(name)"
+            } else {
+                return name
+            }
+
+        }.joined(separator: ", ") + ")"
+    }
+
+    var parameterMatch: String {
+        guard !params.isEmpty else {
+            return ""
+        }
+
+        return "(" + params.map { param in
+            let (_, name, _) = param
+            return "let \(name)"
+        }.joined(separator: ", ") + ")"
+    }
 }
