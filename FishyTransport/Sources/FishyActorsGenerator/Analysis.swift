@@ -112,7 +112,7 @@ final class Analysis: SyntaxVisitor {
 
     let resultTypeNaive: String
     if let t = node.signature.output?.returnType {
-      resultTypeNaive = "\(t)"
+        resultTypeNaive = "\(t.withoutTrivia())"
     } else {
       // pretty naive representation, prefer an enum
       resultTypeNaive = "Void"
