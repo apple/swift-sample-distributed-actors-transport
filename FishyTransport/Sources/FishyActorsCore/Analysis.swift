@@ -15,20 +15,24 @@
 import SwiftSyntax
 import Foundation
 
-final class Analysis: SyntaxVisitor {
+// very naive pretty printing
+let Bold = "\u{001B}[0;1m"
+let Reset = "\u{001B}[0;0m"
+
+public final class Analysis: SyntaxVisitor {
 
   private let sourceDirectory: String
   private let verbose: Bool
 
-  var decls: [DistributedActorDecl] = []
+  public var decls: [DistributedActorDecl] = []
   private var currentDecl: DistributedActorDecl? = nil
 
-  init(sourceDirectory: String, verbose: Bool) {
+  public init(sourceDirectory: String, verbose: Bool) {
     self.sourceDirectory = sourceDirectory
     self.verbose = verbose
   }
 
-  func run() {
+  public func run() {
     let enumerator = FileManager.default.enumerator(atPath: sourceDirectory)
     while let path = enumerator?.nextObject() as? String {
       guard path.hasSuffix(".swift") else {
@@ -55,7 +59,7 @@ final class Analysis: SyntaxVisitor {
 
   // ==== ----------------------------------------------------------------------
 
-  override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
+  public override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
     guard isDistributed(node) else {
       return .skipChildren
     }
@@ -73,7 +77,7 @@ final class Analysis: SyntaxVisitor {
     return .visitChildren
   }
 
-  override func visitPost(_ node: ClassDeclSyntax) {
+  public override func visitPost(_ node: ClassDeclSyntax) {
     if let decl = currentDecl {
       decls.append(decl)
       currentDecl = nil
@@ -82,7 +86,7 @@ final class Analysis: SyntaxVisitor {
 
   // ==== ----------------------------------------------------------------------
 
-  override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
+  public override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
     guard var actorDecl = self.currentDecl else {
       // skip any func declarations which are outside of distributed actor
       // those are illegal anyway and will fail to typecheck
@@ -205,9 +209,9 @@ extension FunctionSignatureSyntax {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Analysis decls
 
-struct DistributedActorDecl {
+public struct DistributedActorDecl {
   let access: AccessControl
-  let name: String
+  public let name: String
   var funcs: [FuncDecl]
 }
 

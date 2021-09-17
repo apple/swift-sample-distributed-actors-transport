@@ -14,10 +14,7 @@
 
 import Foundation
 import ArgumentParser
-
-// very naive pretty printing
-let Bold = "\u{001B}[0;1m"
-let Reset = "\u{001B}[0;0m"
+import FishyActorsCore
 
 struct FishyActorsGeneratorMain: ParsableCommand {
   @Flag(help: "Print verbose logs")
@@ -53,10 +50,6 @@ struct FishyActorsGeneratorMain: ParsableCommand {
     }
 
   }
-}
-
-func targetFilePath(targetDirectory: String, i: Int) -> URL {
-  URL(fileURLWithPath: "\(targetDirectory)/GeneratedFishyActors_\(i).swift")
 }
 
 if #available(macOS 12.0, /* Linux */ *) {

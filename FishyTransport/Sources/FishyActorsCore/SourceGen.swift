@@ -14,7 +14,11 @@
 
 import Foundation
 
-final class SourceGen {
+public func targetFilePath(targetDirectory: String, i: Int) -> URL {
+  URL(fileURLWithPath: "\(targetDirectory)/GeneratedFishyActors_\(i).swift")
+}
+
+public final class SourceGen {
   static let header = String(
     """
     // DO NOT MODIFY: This file will be re-generated automatically.
@@ -34,7 +38,7 @@ final class SourceGen {
   var targetDirectory: String
   var buckets: Int
 
-  init(targetDirectory: String, buckets: Int) {
+  public init(targetDirectory: String, buckets: Int) {
     self.targetDirectory = targetDirectory
     self.buckets = buckets
 
@@ -46,7 +50,7 @@ final class SourceGen {
     }
   }
 
-  func generate(decl: DistributedActorDecl) -> URL {
+  public func generate(decl: DistributedActorDecl) -> URL {
     let targetURL = targetFilePath(targetDirectory: targetDirectory, i: 1) // TODO: hardcoded for now, would use bucketing approach to avoid re-generating too many sources
 
       try! generateSources(for: decl, to: targetURL)
