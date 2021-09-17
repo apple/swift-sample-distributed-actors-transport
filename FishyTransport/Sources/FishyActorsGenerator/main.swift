@@ -41,15 +41,28 @@ struct FishyActorsGeneratorMain: ParsableCommand {
       print("Generate extensions...")
     }
 
-    let sourceGen = SourceGen(targetDirectory: targetDirectory, buckets: buckets)
+    let sourceGen = SourceGen(buckets: buckets)
+    
     for decl in analysis.decls {
       if verbose {
         print("  Generate 'FishyActorTransport' extensions for 'distributed actor \(decl.name)' -> \(targetFilePath(targetDirectory: targetDirectory, i: 1))")
       }
-      _ = sourceGen.generate(decl: decl)
+      for (bucketNum, bucket) in sourceGen.generate(decl: decl).enumerated() {
+        let filePath = targetFilePath(targetDirectory: targetDirectory, i: bucketNum)
+        let handle = try FileHandle(forWritingTo: filePath)
+        
+        try handle.seekToEnd()
+        let textData = bucket.data(using: .utf8)!
+        handle.write(textData)
+        try handle.synchronize()
+        try handle.close()
+      }
     }
-
   }
+}
+
+func targetFilePath(targetDirectory: String, i: Int) -> URL {
+  URL(fileURLWithPath: "\(targetDirectory)/GeneratedFishyActors_\(i).swift")
 }
 
 if #available(macOS 12.0, /* Linux */ *) {

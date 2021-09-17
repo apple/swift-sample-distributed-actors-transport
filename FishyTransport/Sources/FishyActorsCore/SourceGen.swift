@@ -14,10 +14,6 @@
 
 import Foundation
 
-public func targetFilePath(targetDirectory: String, i: Int) -> URL {
-  URL(fileURLWithPath: "\(targetDirectory)/GeneratedFishyActors_\(i).swift")
-}
-
 public final class SourceGen {
   static let header = String(
     """
@@ -35,28 +31,21 @@ public final class SourceGen {
 
     """)
 
-  var targetDirectory: String
   var buckets: Int
 
-  public init(targetDirectory: String, buckets: Int) {
-    self.targetDirectory = targetDirectory
-    self.buckets = buckets
+  public init(buckets: Int) {
+    self.buckets = 1 // TODO: hardcoded for now, would use bucketing approach to avoid re-generating too many sources
 
     // TODO: Don't do this in init
     // Just make sure all "buckets" exist
-    for i in (0..<buckets) {
-      let path = targetFilePath(targetDirectory: targetDirectory, i: i)
-      try! SourceGen.header.write(to: path, atomically: true, encoding: .utf8)
-    }
+//    for i in (0..<buckets) {
+//      let path = targetFilePath(targetDirectory: targetDirectory, i: i)
+//      try! SourceGen.header.write(to: path, atomically: true, encoding: .utf8)
+//    }
   }
 
-  public func generate(decl: DistributedActorDecl) -> URL {
-    let targetURL = targetFilePath(targetDirectory: targetDirectory, i: 1) // TODO: hardcoded for now, would use bucketing approach to avoid re-generating too many sources
-
-      try! generateSources(for: decl, to: targetURL)
-
-    // return into which output file the extensions were generated
-    return targetURL
+  public func generate(decl: DistributedActorDecl) -> [String] {
+    return [try! generateSources(for: decl)]
   }
 
   //*************************************************************************************//
@@ -66,8 +55,8 @@ public final class SourceGen {
   //** See: https://github.com/apple/swift-syntax/tree/main/Sources/SwiftSyntaxBuilder **//
   //*************************************************************************************//
 
-    private func generateSources(for decl: DistributedActorDecl, to file: URL) throws {
-    var sourceText = ""
+  private func generateSources(for decl: DistributedActorDecl) throws -> String {
+    var sourceText = SourceGen.header
 
     sourceText +=
     """
@@ -174,12 +163,7 @@ public final class SourceGen {
     sourceText += "\n"
     sourceText += "\n"
 
-
-    let handle = try FileHandle(forWritingTo: file)
-    handle.seekToEndOfFile()
-        handle.write(Data(sourceText.utf8))
-    try handle.synchronize()
-    handle.closeFile()
+    return sourceText
   }
 }
 
