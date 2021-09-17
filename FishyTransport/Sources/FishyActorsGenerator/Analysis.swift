@@ -121,11 +121,11 @@ final class Analysis: SyntaxVisitor {
     // TODO: this is just a naive implementation, we'd carry all information here
     let fun = FuncDecl(
       access: .internal,
-      name: node.identifier.text,
+      name: node.identifier.text.trimmingCharacters(in: .whitespaces),
       params: node.signature.gatherParams(),
       throwing: isThrowing,
       async: isAsync,
-      result: resultTypeNaive
+      result: resultTypeNaive.trimmingCharacters(in: .whitespaces)
     )
     actorDecl.funcs.append(fun)
 
