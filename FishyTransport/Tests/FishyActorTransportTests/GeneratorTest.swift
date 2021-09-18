@@ -16,6 +16,7 @@ import XCTest
 @testable import FishyActorsCore
 
 final class GeneratorTest: XCTestCase {
+  // Generate source code given example DistributedActorDecl's and compare to the expected generated code
   func test_generate_source() async {
     let generator = SourceGen(buckets: 1)
     
@@ -37,6 +38,7 @@ final class GeneratorTest: XCTestCase {
     }
   }
   
+  // Print the insertions and removals in the correct order to make the generated buckets match the expected ones
   private func printDifferenceInBuckets(expected: [String], generated: [String]) {
     assert(expected.count == generated.count)
     

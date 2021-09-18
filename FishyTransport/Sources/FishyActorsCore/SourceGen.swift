@@ -35,6 +35,7 @@ public final class SourceGen {
   var buckets: Int
 
   public init(buckets: Int) {
+    if buckets > 1 { print("Warning: requested \(buckets) buckets, but bucketing is not implemented yet; defaulting to 1 bucket.") }
     self.buckets = 1 // TODO: hardcoded for now, would use bucketing approach to avoid re-generating too many sources
 
     // TODO: Don't do this in init
