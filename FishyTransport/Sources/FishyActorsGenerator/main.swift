@@ -14,7 +14,6 @@
 
 import Foundation
 import ArgumentParser
-import FishyActorsCore
 
 // very naive pretty printing
 let Bold = "\u{001B}[0;1m"
