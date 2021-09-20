@@ -55,8 +55,62 @@ final class GeneratorTest: XCTestCase {
 private struct TestConstants {
   // Obtained from Analysis on directory with distributed actors
   static let actorDeclarations: [DistributedActorDecl] = [
-    DistributedActorDecl(access: AccessControl.internal, name: "ChatRoom", funcs: [FuncDecl(access: AccessControl.internal, name: "join", params: [(Optional("chatter"), "chatter", "Chatter")], throwing: false, async: false, result: "String"), FuncDecl(access: AccessControl.internal, name: "message", params: [(Optional("_"), "message", "String"), (Optional("from"), "chatter", "Chatter")], throwing: false, async: false, result: "Void"), FuncDecl(access: AccessControl.internal, name: "leave", params: [(Optional("chatter"), "chatter", "Chatter")], throwing: false, async: false, result: "Void")]),
-    DistributedActorDecl(access: AccessControl.internal, name: "Chatter", funcs: [FuncDecl(access: AccessControl.internal, name: "join", params: [(Optional("room"), "room", "ChatRoom")], throwing: true, async: true, result: "Void"), FuncDecl(access: AccessControl.internal, name: "chatterJoined", params: [(Optional("room"), "room", "ChatRoom"), (Optional("chatter"), "chatter", "Chatter")], throwing: true, async: true, result: "Void"), FuncDecl(access: AccessControl.internal, name: "chatRoomMessage", params: [(Optional("_"), "message", "String"), (Optional("from"), "chatter", "Chatter")], throwing: false, async: false, result: "Void")])
+    DistributedActorDecl(
+      access: AccessControl.internal,
+      name: "ChatRoom",
+      funcs: [
+        FuncDecl(
+          access: AccessControl.internal,
+          name: "join",
+          params: [(Optional("chatter"), "chatter", "Chatter")],
+          throwing: false,
+          async: false,
+          result: "String"
+        ),
+        FuncDecl(
+          access: AccessControl.internal,
+          name: "message",
+          params: [(Optional("_"), "message", "String"), (Optional("from"), "chatter", "Chatter")],
+          throwing: false,
+          async: false,
+          result: "Void"
+        ),
+        FuncDecl(
+          access: AccessControl.internal,
+          name: "leave",
+          params: [(Optional("chatter"), "chatter", "Chatter")],
+          throwing: false,
+          async: false,
+          result: "Void")
+      ]
+    ),
+    DistributedActorDecl(
+      access: AccessControl.internal,
+      name: "Chatter",
+      funcs: [
+        FuncDecl(
+          access: AccessControl.internal,
+          name: "join",
+          params: [(Optional("room"), "room", "ChatRoom")],
+          throwing: true,
+          async: true,
+          result: "Void"),
+        FuncDecl(
+          access: AccessControl.internal,
+          name: "chatterJoined",
+          params: [(Optional("room"), "room", "ChatRoom"), (Optional("chatter"), "chatter", "Chatter")],
+          throwing: true,
+          async: true,
+          result: "Void"),
+        FuncDecl(
+          access: AccessControl.internal,
+          name: "chatRoomMessage",
+          params: [(Optional("_"), "message", "String"), (Optional("from"), "chatter", "Chatter")],
+          throwing: false,
+          async: false,
+          result: "Void")
+      ]
+    )
   ]
   static let expectedSources: [String] = [
     #"""
