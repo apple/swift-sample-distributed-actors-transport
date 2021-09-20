@@ -36,20 +36,17 @@ final class SourceGen {
   private var currentBucket: Int = 0 // TODO: Remove me eventually
 
   init(buckets: Int) {
-    if buckets > 1 { print("Warning: requested \(buckets) buckets, but bucketing is not implemented yet; defaulting to 1 bucket.") }
-    self.buckets = 1 // TODO: hardcoded for now, would use bucketing approach to avoid re-generating too many sources
-
-    // TODO: Don't do this in init
-    // Just make sure all "buckets" exist
-//    for i in (0..<buckets) {
-//      let path = targetFilePath(targetDirectory: targetDirectory, i: i)
-//      try! SourceGen.header.write(to: path, atomically: true, encoding: .utf8)
-//    }
+    if buckets > 1 { print("Warning: requested \(buckets) buckets, but bucketing is not implemented yet.") }
+    self.buckets = buckets
   }
 
   func generate(decl: DistributedActorDecl) throws -> GeneratedSource {
-    // TODO: Implement proper bucketing
-    // Currently each new decl goes into the next bucket without taking anything else into account
+    // TODO: Implement a proper bucketing approach to avoid re-generating too many sources
+    // Currently each new decl goes into the next bucket without taking anything else into account.
+    // It will create more buckets than requested if given enough decls
+    if currentBucket >= buckets {
+      print("Warning: too many distributed actors declared, please increase requested buckets (currently \(buckets) buckets; this is a temporary limitation of FishyTransport).")
+    }
     defer { currentBucket += 1 }
     return try GeneratedSource(text: generateSources(for: decl), bucket: currentBucket)
   }

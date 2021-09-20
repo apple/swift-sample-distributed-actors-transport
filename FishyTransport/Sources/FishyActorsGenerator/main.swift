@@ -46,13 +46,20 @@ struct FishyActorsGeneratorMain: ParsableCommand {
 
     let sourceGen = SourceGen(buckets: buckets)
     
+    // TODO: Don't do this
+    // Just make sure all "buckets" exist (don't remove this
+    // until you can honor the requested ammount of buckets)
+    for i in (0..<buckets) {
+      let path = targetFilePath(targetDirectory: targetDirectory, i: i)
+      try! "".write(to: path, atomically: true, encoding: .utf8)
+    }
+    
     for decl in analysis.decls {
-      if verbose {
-        print("  Generate 'FishyActorTransport' extensions for 'distributed actor \(decl.name)' -> \(targetFilePath(targetDirectory: targetDirectory, i: 1))")
-      }
-      
       let source = try sourceGen.generate(decl: decl)
       let filePath = targetFilePath(targetDirectory: targetDirectory, i: source.bucket)
+      if verbose {
+        print("  Generated 'FishyActorTransport' extensions for 'distributed actor \(decl.name)' -> \(filePath)")
+      }
       
       try source.text.write(to: filePath, atomically: true, encoding: .utf8)
     }
