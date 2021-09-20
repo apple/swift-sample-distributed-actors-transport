@@ -51,16 +51,11 @@ struct FishyActorsGeneratorMain: ParsableCommand {
       if verbose {
         print("  Generate 'FishyActorTransport' extensions for 'distributed actor \(decl.name)' -> \(targetFilePath(targetDirectory: targetDirectory, i: 1))")
       }
-      for (bucketNum, bucket) in sourceGen.generate(decl: decl).enumerated() {
-        let filePath = targetFilePath(targetDirectory: targetDirectory, i: bucketNum)
-        let handle = try FileHandle(forWritingTo: filePath)
-        
-        try handle.seekToEnd()
-        let textData = bucket.data(using: .utf8)!
-        handle.write(textData)
-        try handle.synchronize()
-        try handle.close()
-      }
+      
+      let source = try sourceGen.generate(decl: decl)
+      let filePath = targetFilePath(targetDirectory: targetDirectory, i: source.bucket)
+      
+      try source.text.write(to: filePath, atomically: true, encoding: .utf8)
     }
   }
 }

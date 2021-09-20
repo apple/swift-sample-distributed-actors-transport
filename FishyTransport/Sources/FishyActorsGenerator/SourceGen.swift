@@ -33,6 +33,7 @@ final class SourceGen {
     """)
 
   var buckets: Int
+  private var currentBucket: Int = 0 // TODO: Remove me eventually
 
   init(buckets: Int) {
     if buckets > 1 { print("Warning: requested \(buckets) buckets, but bucketing is not implemented yet; defaulting to 1 bucket.") }
@@ -46,8 +47,11 @@ final class SourceGen {
 //    }
   }
 
-  func generate(decl: DistributedActorDecl) -> [String] {
-    return [try! generateSources(for: decl)]
+  func generate(decl: DistributedActorDecl) throws -> GeneratedSource {
+    // TODO: Implement proper bucketing
+    // Currently each new decl goes into the next bucket without taking anything else into account
+    defer { currentBucket += 1 }
+    return try GeneratedSource(text: generateSources(for: decl), bucket: currentBucket)
   }
 
   //*************************************************************************************//
@@ -164,6 +168,11 @@ final class SourceGen {
 
     return sourceText
   }
+}
+
+struct GeneratedSource {
+  let text: String
+  let bucket: Int
 }
 
 extension FuncDecl {
