@@ -15,19 +15,15 @@
 import SwiftSyntax
 import Foundation
 
-// very naive pretty printing
-let Bold = "\u{001B}[0;1m"
-let Reset = "\u{001B}[0;0m"
-
-public final class Analysis: SyntaxVisitor {
+final class Analysis: SyntaxVisitor {
 
   private let sourceDirectory: String
   private let verbose: Bool
 
-  public var decls: [DistributedActorDecl] = []
+  var decls: [DistributedActorDecl] = []
   private var currentDecl: DistributedActorDecl? = nil
 
-  public init(sourceDirectory: String, verbose: Bool) {
+  init(sourceDirectory: String, verbose: Bool) {
     self.sourceDirectory = sourceDirectory
     self.verbose = verbose
   }
@@ -59,7 +55,7 @@ public final class Analysis: SyntaxVisitor {
 
   // ==== ----------------------------------------------------------------------
 
-  public override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
+  override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
     guard isDistributed(node) else {
       return .skipChildren
     }
@@ -77,7 +73,7 @@ public final class Analysis: SyntaxVisitor {
     return .visitChildren
   }
 
-  public override func visitPost(_ node: ClassDeclSyntax) {
+  override func visitPost(_ node: ClassDeclSyntax) {
     if let decl = currentDecl {
       decls.append(decl)
       currentDecl = nil
@@ -86,7 +82,7 @@ public final class Analysis: SyntaxVisitor {
 
   // ==== ----------------------------------------------------------------------
 
-  public override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
+  override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
     guard var actorDecl = self.currentDecl else {
       // skip any func declarations which are outside of distributed actor
       // those are illegal anyway and will fail to typecheck
@@ -211,7 +207,7 @@ extension FunctionSignatureSyntax {
 
 public struct DistributedActorDecl {
   let access: AccessControl
-  public let name: String
+  let name: String
   var funcs: [FuncDecl]
 }
 

@@ -16,6 +16,10 @@ import Foundation
 import ArgumentParser
 import FishyActorsCore
 
+// very naive pretty printing
+let Bold = "\u{001B}[0;1m"
+let Reset = "\u{001B}[0;0m"
+
 struct FishyActorsGeneratorMain: ParsableCommand {
   @Flag(help: "Print verbose logs")
   var verbose: Bool = false

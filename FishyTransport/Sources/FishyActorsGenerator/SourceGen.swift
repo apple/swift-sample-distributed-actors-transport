@@ -14,7 +14,7 @@
 
 import Foundation
 
-public final class SourceGen {
+final class SourceGen {
   static let header = String(
     """
     // DO NOT MODIFY: This file will be re-generated automatically.
@@ -34,7 +34,7 @@ public final class SourceGen {
 
   var buckets: Int
 
-  public init(buckets: Int) {
+  init(buckets: Int) {
     if buckets > 1 { print("Warning: requested \(buckets) buckets, but bucketing is not implemented yet; defaulting to 1 bucket.") }
     self.buckets = 1 // TODO: hardcoded for now, would use bucketing approach to avoid re-generating too many sources
 
@@ -46,7 +46,7 @@ public final class SourceGen {
 //    }
   }
 
-  public func generate(decl: DistributedActorDecl) -> [String] {
+  func generate(decl: DistributedActorDecl) -> [String] {
     return [try! generateSources(for: decl)]
   }
 
