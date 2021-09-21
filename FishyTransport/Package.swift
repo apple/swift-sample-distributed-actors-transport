@@ -40,7 +40,7 @@ let package = Package(
             "FishyActorTransportPlugin"
           ]
       ),
-
+      
       // would be provided by transport library
       .executable(
           name: "FishyActorsGenerator",
@@ -80,12 +80,12 @@ let package = Package(
             "FishyActorsGenerator"
           ]
       ),
-
+      
       .executableTarget(
           name: "FishyActorsGenerator",
           dependencies: [
-            .product(name: "SwiftSyntax", package: "swift-syntax"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            .product(name: "SwiftSyntax", package: "swift-syntax"),
           ]
       ),
 
@@ -94,10 +94,17 @@ let package = Package(
       .testTarget(
           name: "FishyActorTransportTests",
           dependencies: [
-            "FishyActorTransport"
+            "FishyActorTransport",
           ],
           swiftSettings: [
             .unsafeFlags(experimentalFlags)
+          ]
+      ),
+      
+      .testTarget(
+          name: "FishyActorsGeneratorTests",
+          dependencies: [
+            "FishyActorsGenerator",
           ]
       ),
     ]

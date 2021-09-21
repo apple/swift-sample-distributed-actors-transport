@@ -28,7 +28,7 @@ final class Analysis: SyntaxVisitor {
     self.verbose = verbose
   }
 
-  func run() {
+  public func run() {
     let enumerator = FileManager.default.enumerator(atPath: sourceDirectory)
     while let path = enumerator?.nextObject() as? String {
       guard path.hasSuffix(".swift") else {
@@ -112,7 +112,7 @@ final class Analysis: SyntaxVisitor {
 
     let resultTypeNaive: String
     if let t = node.signature.output?.returnType {
-      resultTypeNaive = "\(t)"
+      resultTypeNaive = "\(t.withoutTrivia())"
     } else {
       // pretty naive representation, prefer an enum
       resultTypeNaive = "Void"
@@ -121,11 +121,11 @@ final class Analysis: SyntaxVisitor {
     // TODO: this is just a naive implementation, we'd carry all information here
     let fun = FuncDecl(
       access: .internal,
-      name: node.identifier.text.trimmingCharacters(in: .whitespaces),
+      name: node.identifier.withoutTrivia().text,
       params: node.signature.gatherParams(),
       throwing: isThrowing,
       async: isAsync,
-      result: resultTypeNaive.trimmingCharacters(in: .whitespaces)
+      result: resultTypeNaive
     )
     actorDecl.funcs.append(fun)
 
@@ -205,7 +205,7 @@ extension FunctionSignatureSyntax {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Analysis decls
 
-struct DistributedActorDecl {
+public struct DistributedActorDecl {
   let access: AccessControl
   let name: String
   var funcs: [FuncDecl]
