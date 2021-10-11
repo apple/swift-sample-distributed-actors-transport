@@ -23,7 +23,7 @@ import Logging
 import Foundation // because JSONEncoder and co
 import struct Foundation.UUID
 
-// protocol MessageRecipient: DistributedActor {
+@available(OSX 10.15, *)
 public protocol MessageRecipient {
   nonisolated func _receiveAny<Encoder, Decoder>(
     envelope: Envelope, encoder: Encoder, decoder: Decoder
@@ -50,6 +50,7 @@ private struct AnyMessageRecipient: MessageRecipient {
   }
 }
 
+@available(OSX 10.15, *)
 public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomStringConvertible {
 
   // server / bind configuration
@@ -300,6 +301,7 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
 /// A very naive (fishy even!) actor identity implementation.
 ///
 /// It uniquely identifies a fishy distributed actor in the system.
+@available(OSX 10.15, *)
 public struct FishyIdentity: ActorIdentity, CustomStringConvertible, Hashable {
   public let proto: String
   public let host: String

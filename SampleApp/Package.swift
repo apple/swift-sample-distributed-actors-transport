@@ -5,8 +5,6 @@ import PackageDescription
 
 let experimentalFlags = [
   "-Xfrontend", "-enable-experimental-distributed",
-  "-Xfrontend", "-validate-tbd-against-ir=none",
-  "-Xfrontend", "-disable-availability-checking", // availability does not matter since _Distributed is not part of the SDK at this point
 ]
 
 /******************************************************************************/
@@ -24,7 +22,7 @@ let experimentalFlags = [
 let package = Package(
     name: "swift-sample-distributed-actors-transport",
     platforms: [
-      .macOS(.v12),
+      .macOS(.v12), // because of the 'distributed actor' feature
     ],
     products: [
       // our example app

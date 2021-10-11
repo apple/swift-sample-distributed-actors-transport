@@ -14,27 +14,36 @@
 
 import PackagePlugin
 
-let toolName = "FishyActorsGenerator"
-let genTool = try targetBuildContext.tool(named: toolName)
-let generatorPath = try targetBuildContext.tool(named: toolName).path
+@main struct MyPlugin: BuildToolPlugin {
 
-let inputFiles = targetBuildContext.inputFiles
-    .map { $0.path }
-    .filter { $0.extension?.lowercased() == "swift" }
+  func createBuildCommands(context: TargetBuildContext) throws -> [Command] {
+    let toolName = "FishyActorsGenerator"
+    let genTool = try context.tool(named: toolName)
+    let generatorPath = try context.tool(named: toolName).path
 
-let buckets = 5 // # of buckets for consistent hashing
-let outputFiles = !inputFiles.isEmpty ? (0 ..< buckets)
-    .map { targetBuildContext.pluginWorkDirectory.appending("GeneratedFishyActors_\($0).swift") } : []
+    let inputFiles = context.inputFiles
+        .map { $0.path }
+        .filter { $0.extension?.lowercased() == "swift" }
 
-commandConstructor.addBuildCommand(
-    displayName: "Distributed Actors: Generating FISHY actors for \(targetBuildContext.targetName)",
-    executable: generatorPath,
-    arguments: [
-      "--verbose",
-      "--source-directory", targetBuildContext.targetDirectory.string,
-      "--target-directory", targetBuildContext.pluginWorkDirectory.string,
-      "--buckets", "\(buckets)",
-    ],
-    inputFiles: inputFiles,
-    outputFiles: outputFiles
-)
+    let buckets = 5 // # of buckets for consistent hashing
+    let outputFiles = !inputFiles.isEmpty ? (0..<buckets)
+        .map {
+      context.pluginWorkDirectory.appending("GeneratedFishyActors_\($0).swift")
+    } : []
+
+    let command = Command.buildCommand(
+        displayName: "Distributed Actors: Generating FISHY actors for \(context.targetName)",
+        executable: generatorPath,
+        arguments: [
+          "--verbose",
+          "--source-directory", context.targetDirectory.string,
+          "--target-directory", context.pluginWorkDirectory.string,
+          "--buckets", "\(buckets)",
+        ],
+        inputFiles: inputFiles,
+        outputFiles: outputFiles
+    )
+
+    return [command]
+  }
+}

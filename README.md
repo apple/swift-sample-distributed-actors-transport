@@ -4,12 +4,12 @@ Sample application and `ActorTransport`, associated with `distributed actor` lan
 
 ## Running the sample app
 
-1. Download the latest toolchain from `main` branch, or a built one from a specific PR. (Alternatively [swift-PR-39087-1111-osx.tar.gz](https://ci.swift.org/job/swift-PR-toolchain-osx/1111//artifact/branch-main/swift-PR-39087-1111-osx.tar.gz), if still available, is a fine toolchain to use for this sample app.)
+1. Download the latest toolchain from `main` branch, or a built one from a specific PR. 
 
 3. Move it to `Library/Developer/Toolchains/` and point the TOOLCHAIN env variable at it:
 
 ```
-export TOOLCHAIN=/Library/Developer/Toolchains/swift-PR-39061-1098.xctoolchain
+export TOOLCHAIN=/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-09-18-a.xctoolchain
 ```
 
 To run the sample app, use the following command:

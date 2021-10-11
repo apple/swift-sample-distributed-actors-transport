@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import SwiftSyntax
+import SwiftSyntaxParser
 import Foundation
 
 final class Analysis: SyntaxVisitor {

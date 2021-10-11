@@ -5,8 +5,6 @@ import PackageDescription
 
 let experimentalFlags = [
   "-Xfrontend", "-enable-experimental-distributed",
-  "-Xfrontend", "-validate-tbd-against-ir=none",
-  "-Xfrontend", "-disable-availability-checking", // availability does not matter since _Distributed is not part of the SDK at this point
 ]
 
 /******************************************************************************/
@@ -24,7 +22,7 @@ let experimentalFlags = [
 let package = Package(
     name: "sample-fishy-transport",
     platforms: [
-      .macOS(.v12),
+      .macOS(.v12), // because of the 'distributed actor' feature
     ],
     products: [
       .library(
@@ -54,8 +52,7 @@ let package = Package(
       .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
       .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.5.0"),
       .package(url: "https://github.com/apple/swift-argument-parser", from: "0.4.0"),
-//      .package(url: "https://github.com/apple/swift-syntax.git", .revision("swift-5.5-DEVELOPMENT-SNAPSHOT-2021-08-28-a")) // TODO: can't use since 'The loaded '_InternalSwiftSyntaxParser' library is from a toolchain that is not compatible with this version of SwiftSyntax'
-      .package(url: "https://github.com/apple/swift-syntax.git", branch: "main") // FIXME: needs better versioned tags
+      .package(url: "https://github.com/apple/swift-syntax.git", revision: "b8e4a69237f9dfa362268dddaef8793bc694dc6f") // TODO: we currently must depend on specific versions here
       // ==== END OF DEPENDENCIES OF TRANSPORT ==== //
     ],
     targets: [
@@ -86,6 +83,7 @@ let package = Package(
           dependencies: [
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
             .product(name: "SwiftSyntax", package: "swift-syntax"),
+            .product(name: "SwiftSyntaxParser", package: "swift-syntax"),
           ]
       ),
 
