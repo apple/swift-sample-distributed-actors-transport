@@ -71,7 +71,7 @@ final class SourceGen {
     // -- emit a `case` that represents the function
     //
     sourceText += """
-        enum _Message: Sendable, Codable {
+        enum _Message: Sendable, FishyActorTransport.FishyMessage {
 
       """
 
@@ -97,6 +97,13 @@ final class SourceGen {
 
       sourceText += ")\n"
     }
+
+    sourceText += "\n    var functionIdentifier: String {\n      switch self {\n"
+    for fun in decl.funcs {
+      sourceText += "      case .\(fun.name):\n        return \"\(fun.name)(\(fun.renderFuncParams(forFuncIdentifier: true)))\"\n"
+    }
+    sourceText += "      }\n"
+    sourceText += "    }\n"
 
     sourceText += "  }\n  \n"
     // ==== Generate the "receive"-side, we must decode the incoming Envelope
@@ -241,5 +248,40 @@ extension FuncDecl {
       let (_, name, _) = param
       return "let \(name)"
     }.joined(separator: ", ") + ")"
+  }
+}
+
+extension FuncDecl {
+  fileprivate func renderFuncParams(forFuncIdentifier: Bool = false) -> String {
+    var result = params.map { first, second, type in
+      // FIXME: super naive... replace with something more proper
+      if let name = first {
+        if name == second || forFuncIdentifier {
+          // no need to write `name name: String`
+          var ret = "\(name)"
+          if (!forFuncIdentifier) {
+            ret += ": \(type)"
+          }
+          return ret
+        } else {
+          var ret = "\(name) \(second):"
+          if (!forFuncIdentifier) {
+            ret += " \(type)"
+          }
+          return ret
+        }
+      } else {
+        if (forFuncIdentifier) {
+          return "_"
+        } else {
+          return "\(second): \(type)"
+        }
+      }
+    }.joined(separator: forFuncIdentifier ? ":" : ", ")
+
+    if forFuncIdentifier && !self.params.isEmpty {
+      result += ":"
+    }
+    return result
   }
 }

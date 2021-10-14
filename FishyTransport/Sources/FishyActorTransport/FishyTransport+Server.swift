@@ -17,6 +17,7 @@ import _Distributed
 import NIO
 import NIOHTTP1
 import Foundation
+import Tracing
 import _NIOConcurrency
 
 private final class HTTPHandler: @unchecked Sendable, ChannelInboundHandler, RemovableChannelHandler {
@@ -144,12 +145,12 @@ private final class HTTPHandler: @unchecked Sendable, ChannelInboundHandler, Rem
 
 final class FishyServer {
 
-  var group: MultiThreadedEventLoopGroup
+  var group: EventLoopGroup
   let transport: FishyTransport
 
   var channel: Channel! = nil
 
-  init(group: MultiThreadedEventLoopGroup, transport: FishyTransport) {
+  init(group: EventLoopGroup, transport: FishyTransport) {
     self.group = group
     self.transport = transport
   }
