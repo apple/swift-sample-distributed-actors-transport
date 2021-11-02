@@ -16,7 +16,11 @@ import _Distributed
 
 import FishyActorTransport
 import ArgumentParser
+import NIO
 import Logging
+import Tracing
+import OpenTelemetry
+import OtlpGRPCSpanExporting
 
 import func Foundation.sleep
 
@@ -28,18 +32,29 @@ struct Demo: ParsableCommand {
   var interactive: Bool = false
 
   @Flag(help: "Log level used by (all) ActorTransport instances")
-  var transportLogLevel: Logger.Level = .warning
+  var transportLogLevel: Logger.Level = .info
 
   mutating func run() throws {
     LoggingSystem.bootstrap(PrettyDemoLogHandler.init)
+    let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+    let otel = OTel(
+        serviceName: "chatroom",
+        eventLoopGroup: group,
+        processor: OTel.BatchSpanProcessor(
+            exportingTo: OtlpGRPCSpanExporter(config: OtlpGRPCSpanExporter.Config(eventLoopGroup: group)),
+            eventLoopGroup: group
+        )
+    )
+    try otel.start().wait()
+    InstrumentationSystem.bootstrap(otel.tracer())
 
     var keepAlive: Set<Chatter> = []
 
     // one node to keep the chat rooms:
-    let roomNode = try FishyTransport(host: "127.0.0.1", port: 8001, logLevel: transportLogLevel)
+    let roomNode = try FishyTransport(host: "127.0.0.1", port: 8001, group: group, logLevel: transportLogLevel)
     // multiple nodes for the regional chatters:
-    let firstNode = try FishyTransport(host: "127.0.0.1", port: 9002, logLevel: transportLogLevel)
-    let secondNode = try FishyTransport(host: "127.0.0.1", port: 9003, logLevel: transportLogLevel)
+    let firstNode = try FishyTransport(host: "127.0.0.1", port: 9002, group: group, logLevel: transportLogLevel)
+    let secondNode = try FishyTransport(host: "127.0.0.1", port: 9003, group: group, logLevel: transportLogLevel)
 
     let room = ChatRoom(topic: "Cute Capybaras", transport: roomNode)
 
@@ -62,6 +77,9 @@ struct Demo: ParsableCommand {
     // normally transports will ofer `await .park()` functions, but for now just sleep:
     sleep(1000)
     _ = keepAlive
+
+    try otel.shutdown().wait()
+    try group.syncShutdownGracefully()
   }
 }
 
@@ -70,4 +88,3 @@ if #available(macOS 12.0, /* Linux */ *) {
 } else {
   fatalError("Unsupported platform")
 }
-

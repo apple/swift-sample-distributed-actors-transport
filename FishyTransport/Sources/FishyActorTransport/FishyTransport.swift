@@ -19,6 +19,7 @@ import NIOHTTP1
 import _NIOConcurrency
 import AsyncHTTPClient
 import Logging
+import Tracing
 
 import Foundation // because JSONEncoder and co
 import struct Foundation.UUID
@@ -28,6 +29,10 @@ public protocol MessageRecipient {
   nonisolated func _receiveAny<Encoder, Decoder>(
     envelope: Envelope, encoder: Encoder, decoder: Decoder
   ) async throws -> Encoder.Output where Encoder: TopLevelEncoder, Decoder: TopLevelDecoder
+}
+
+public protocol FishyMessage: Codable {
+  var functionIdentifier: String { get }
 }
 
 private struct AnyMessageRecipient: MessageRecipient {
@@ -64,11 +69,11 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
   private var managed: [AnyActorIdentity: AnyMessageRecipient]
 
   // networking infra
-  private let group: MultiThreadedEventLoopGroup
+  private let group: EventLoopGroup
   private var server: FishyServer!
   private let client: HTTPClient
 
-  public init(host: String, port: Int, logLevel: Logger.Level? = nil) throws {
+  public init(host: String, port: Int, group: EventLoopGroup, logLevel: Logger.Level? = nil) throws {
     self.host = host
     self.port = port
 
@@ -82,7 +87,6 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
       }
     }
 
-    let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
     self.group = group
     self.lock = Lock()
     self.managed = [:]
@@ -140,14 +144,14 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
     }
   }
 
-  public func send<Message: Sendable & Codable>(
+  public func send<Message: Sendable & FishyMessage>(
       _ message: Message, to recipient: AnyActorIdentity,
       expecting responseType: Void.Type
   ) async throws -> Void {
     _ = try await self.send(message, to: recipient, expecting: NoResponse.self)
   }
 
-  public func send<Message: Sendable & Codable, Response: Sendable & Codable>(
+  public func send<Message: Sendable & FishyMessage, Response: Sendable & Codable>(
     _ message: Message, to recipient: AnyActorIdentity,
     expecting responseType: Response.Type = Response.self
   ) async throws -> Response {
@@ -184,78 +188,96 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
     }
   }
 
-  private func sendEnvelopeRequest<Message: Sendable & Codable>(
+  private func sendEnvelopeRequest<Message: Sendable & FishyActorTransport.FishyMessage>(
       _ message: Message, to recipient: AnyActorIdentity, 
       encoder: JSONEncoder
   ) async throws -> HTTPClient.Response {
-    // Prepare the message envelope
-    var envelope = try Envelope(recipient: recipient, message: message)
+    try await InstrumentationSystem.tracer.withSpan(message.functionIdentifier) { span in
+      // Prepare the message envelope
+      var envelope = try Envelope(recipient: recipient, message: message)
 
-    // TODO: pick up any task locals that we want to propagage, e.g. tracing metadata and put into Envelope
-    // i.e. this is where we'd invoke swift-distributed-tracing's Instruments
-    envelope.metadata = [:]
+      // inject metadata values to propagate for distributed tracing
+      if let baggage = Baggage.current {
+        InstrumentationSystem.instrument.inject(baggage, into: &envelope.metadata, using: MessageEnvelopeMetadataInjector())
+      }
 
-    var recipientURI: String.SubSequence = "\(recipient.underlying)"
+      var recipientURI: String.SubSequence = "\(recipient.underlying)"
 
-    let requestData = try encoder.encode(envelope)
-    log.debug("Send envelope request", metadata: [
-      "envelope": "\(String(data: requestData, encoding: .utf8)!)",
-      "recipient": "\(recipientURI)"
-    ])
+      let requestData = try encoder.encode(envelope)
+      log.debug("Send envelope request", metadata: [
+        "envelope": "\(String(data: requestData, encoding: .utf8)!)",
+        "recipient": "\(recipientURI)"
+      ])
 
-    recipientURI = recipientURI.dropFirst("fishy://".count) // our transport is super silly, and abuses http for its messaging
-    let requestURI = String("http://" + recipientURI)
+      recipientURI = recipientURI.dropFirst("fishy://".count) // our transport is super silly, and abuses http for its messaging
+      let requestURI = String("http://" + recipientURI)
 
-    let response = try await sendHTTPRequest(requestURI: requestURI, requestData: requestData)
-    log.debug("Received response \(response)", metadata: [
-      "response/payload": "\(response.body?.getString(at: 0, length: response.body?.readableBytes ?? 0) ?? "")"
-    ])
+      let response = try await sendHTTPRequest(requestURI: requestURI, requestData: requestData)
+      log.debug("Received response \(response)", metadata: [
+        "response/payload": "\(response.body?.getString(at: 0, length: response.body?.readableBytes ?? 0) ?? "")"
+      ])
 
-    return response
+      return response
+    }
   }
 
   private func sendHTTPRequest(requestURI: String, requestData: Data) async throws -> HTTPClient.Response {
-    let request = try HTTPClient.Request(
-        url: requestURI,
-        method: .POST,
-        headers: [
-          "Content-Type": "application/json"
-        ],
-        body: .data(requestData))
+    try await InstrumentationSystem.tracer.withSpan("HTTP POST", ofKind: .client) { span in
+      let request = try HTTPClient.Request(
+          url: requestURI,
+          method: .POST,
+          headers: [
+            "Content-Type": "application/json"
+          ],
+          body: .data(requestData))
+      span.attributes["http.method"] = "POST"
+      span.attributes["http.url"] = requestURI
 
-    let future = client.execute(
-        request: request,
-        deadline: .now() + .seconds(3)) // A real implementation would allow configuring these (i.e. pick up a task-local deadline)
+      let future = client.execute(
+          request: request,
+          deadline: .now() + .seconds(3)) // A real implementation would allow configuring these (i.e. pick up a task-local deadline)
 
-    return try await future.get()
+      let response = try await future.get()
+      span.attributes["http.status_code"] = Int(response.status.code)
+      return response
+    }
   }
 
   /// Actually deliver the message to the local recipient
   func deliver(envelope: Envelope) async throws -> Data {
-    log.debug("Deliver to \(envelope.recipient)")
+    var baggage = Baggage.current ?? .topLevel
+    InstrumentationSystem.instrument.extract(
+        envelope.metadata,
+        into: &baggage,
+        using: MessageEnvelopeMetadataExtractor()
+    )
 
-    guard let known = resolveRecipient(of: envelope) else {
-      throw handleDeadLetter(envelope)
-    }
+    return try await Baggage.$current.withValue(baggage) {
+      log.debug("Deliver to \(envelope.recipient)")
 
-    log.debug("Delivering to local instance: \(known)", metadata: [
-      "envelope": "\(envelope)",
-      "recipient": "\(known)",
-    ])
+      guard let known = resolveRecipient(of: envelope) else {
+        throw handleDeadLetter(envelope)
+      }
 
-    // In a real implementation coders would often be configurable on transport level.
-    //
-    // The transport must ensure to store itself in the user info offered to receive
-    // as it may need to attempt to decode actor references.
-    let encoder = JSONEncoder()
-    let decoder = JSONDecoder()
-    encoder.userInfo[.actorTransportKey] = self
-    decoder.userInfo[.actorTransportKey] = self
+      log.debug("Delivering to local instance: \(known)", metadata: [
+        "envelope": "\(envelope)",
+        "recipient": "\(known)",
+      ])
 
-    do {
-      return try await known._receiveAny(envelope: envelope, encoder: encoder, decoder: decoder)
-    } catch {
-      fatalError("Failed to deliver: \(error)")
+      // In a real implementation coders would often be configurable on transport level.
+      //
+      // The transport must ensure to store itself in the user info offered to receive
+      // as it may need to attempt to decode actor references.
+      let encoder = JSONEncoder()
+      let decoder = JSONDecoder()
+      encoder.userInfo[.actorTransportKey] = self
+      decoder.userInfo[.actorTransportKey] = self
+
+      do {
+        return try await known._receiveAny(envelope: envelope, encoder: encoder, decoder: decoder)
+      } catch {
+        fatalError("Failed to deliver: \(error)")
+      }
     }
   }
 
@@ -357,8 +379,10 @@ public struct Envelope: Sendable, Codable {
 
 /// Represents a `void` return type of a distributed call.
 /// Pass this to `send` to avoid decoding any value from the response.
-public enum NoResponse: Codable {
+public enum NoResponse: Codable, FishyActorTransport.FishyMessage {
   case _instance
+  
+  public var functionIdentifier: String { "noResponse" }
 }
 
 extension DistributedActor {
@@ -392,4 +416,19 @@ public struct UnknownRecipientError: ActorTransportError {
 
 public struct RecipientReleasedError: ActorTransportError {
   let recipient: AnyActorIdentity
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Instrumentation
+
+struct MessageEnvelopeMetadataInjector: Injector {
+  func inject(_ value: String, forKey key: String, into metadata: inout [String: String]) {
+    metadata[key] = value
+  }
+}
+
+struct MessageEnvelopeMetadataExtractor: Extractor {
+  func extract(key: String, from metadata: [String: String]) -> String? {
+    metadata[key]
+  }
 }

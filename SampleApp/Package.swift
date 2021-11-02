@@ -38,6 +38,8 @@ let package = Package(
 
       .package(url: "https://github.com/apple/swift-log.git", from: "1.2.0"),
       .package(url: "https://github.com/apple/swift-argument-parser", from: "0.4.0"),
+      .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "0.2.0"),
+      .package(url: "https://github.com/slashmo/opentelemetry-swift.git", branch: "automatic-context-propagation"),
     ],
     targets: [
       .executableTarget(
@@ -46,6 +48,9 @@ let package = Package(
             .product(name: "FishyActorTransport", package: "sample-fishy-transport"),
             .product(name: "Logging", package: "swift-log"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            .product(name: "Tracing", package: "swift-distributed-tracing"),
+            .product(name: "OpenTelemetry", package: "opentelemetry-swift"),
+            .product(name: "OtlpGRPCSpanExporting", package: "opentelemetry-swift"),
           ],
           swiftSettings: [
             .unsafeFlags(experimentalFlags)

@@ -70,6 +70,17 @@ Notice that the simplified ID printout contains the port number of the node the 
 This sample is a distributed application created from just a single process, but all the "nodes" communicate through networking with eachother.
 The same application could be launched on different physical hosts (and then would have different IP addresses), this is what location transparency of distributed actors enables us to do.
 
+### Distributed Tracing
+
+Additionally, the calls can also be traced using "Swift Distributed Tracing". To use tracing for the sample app, start the services in [`docker-compose.yaml`](SampleApp/docker-compose.yaml), then run the sample again.
+
+```sh
+docker compose -p fishy-transport-sample up -d
+```
+
+Afterwards, open Jaeger [http://localhost:16686](http://localhost:16686) and you'll see traces similar to this:
+
+![Jaeger Example Trace](images/jaeger-trace.png)
 
 ### Experimental flags
 
