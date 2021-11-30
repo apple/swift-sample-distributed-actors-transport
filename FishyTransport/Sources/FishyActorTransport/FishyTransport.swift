@@ -57,6 +57,7 @@ private struct AnyMessageRecipient: MessageRecipient {
 
 @available(OSX 10.15, *)
 public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomStringConvertible {
+  public typealias Identity = AnyActorIdentity
 
   // server / bind configuration
   let host: String
@@ -133,7 +134,7 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
 
     self.lock.withLockVoid {
       let anyRecipient = AnyMessageRecipient(actor: actor)
-      self.managed[actor.id] = anyRecipient
+      self.managed[actor.id as! AnyActorIdentity] = anyRecipient
     }
   }
 
