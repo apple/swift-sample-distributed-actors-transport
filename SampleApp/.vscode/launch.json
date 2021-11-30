@@ -1,0 +1,33 @@
+{
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug FishyActorsDemo",
+            "program": "${workspaceFolder}/.build/debug/FishyActorsDemo",
+            "args": [],
+            "cwd": "${workspaceFolder:SampleApp}",
+            "preLaunchTask": "swift: Build Debug FishyActorsDemo"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Release FishyActorsDemo",
+            "program": "${workspaceFolder}/.build/release/FishyActorsDemo",
+            "args": [],
+            "cwd": "${workspaceFolder:SampleApp}",
+            "preLaunchTask": "swift: Build Release FishyActorsDemo"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Test swift-sample-distributed-actors-transport",
+            "program": "/Applications/Xcode-beta.app/Contents/Developer/usr/bin/xctest",
+            "args": [
+                ".build/debug/swift-sample-distributed-actors-transportPackageTests.xctest"
+            ],
+            "cwd": "${workspaceFolder:SampleApp}",
+            "preLaunchTask": "swift: Build All"
+        }
+    ]
+}

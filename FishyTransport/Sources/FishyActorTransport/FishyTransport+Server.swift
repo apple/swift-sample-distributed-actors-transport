@@ -86,7 +86,7 @@ private final class HTTPHandler: @unchecked Sendable, ChannelInboundHandler, Rem
 
   func onMessageComplete(context: ChannelHandlerContext, messageBytes: ByteBuffer) {
     let decoder = JSONDecoder()
-    decoder.userInfo[.actorTransportKey] = transport
+    decoder.userInfo[.actorSystemKey] = transport
 
     let envelope: Envelope
     do {

@@ -56,20 +56,20 @@ struct Demo: ParsableCommand {
     let firstNode = try FishyTransport(host: "127.0.0.1", port: 9002, group: group, logLevel: transportLogLevel)
     let secondNode = try FishyTransport(host: "127.0.0.1", port: 9003, group: group, logLevel: transportLogLevel)
 
-    let room = ChatRoom(topic: "Cute Capybaras", transport: roomNode)
+    let room = ChatRoom(topic: "Cute Capybaras", system: roomNode)
 
-    let alice = Chatter(transport: firstNode)
-    let bob = Chatter(transport: secondNode)
-    let charlie = Chatter(transport: secondNode)
+    let alice = Chatter(system: firstNode)
+    let bob = Chatter(system: secondNode)
+    let charlie = Chatter(system: secondNode)
 
     for chatter in [alice, bob, charlie] {
       keepAlive.insert(chatter)
 
       Task {
-        // we resolve a reference to `room` using our `p.actorTransport`
+        // we resolve a reference to `room` using our `p.actorSystem`
         // since all chatters are on other nodes than the chat room,
         // this will always yield a remote reference.
-        let remoteRoom = try ChatRoom.resolve(room.id, using: chatter.actorTransport)
+        let remoteRoom = try ChatRoom.resolve(id: room.id, using: chatter.actorSystem)
         try await chatter.join(room: remoteRoom)
       }
     }

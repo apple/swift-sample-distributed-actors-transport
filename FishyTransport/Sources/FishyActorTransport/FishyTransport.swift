@@ -56,7 +56,9 @@ private struct AnyMessageRecipient: MessageRecipient {
 }
 
 @available(OSX 10.15, *)
-public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomStringConvertible {
+public final class FishyTransport: DistributedActorSystem, @unchecked Sendable, CustomStringConvertible {
+  public typealias ActorID = FishyIdentity
+  public typealias Invocation = FishyTargetInvocation
 
   // server / bind configuration
   let host: String
@@ -66,7 +68,7 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
 
   // managed local actors
   private let lock: Lock
-  private var managed: [AnyActorIdentity: AnyMessageRecipient]
+  private var managed: [ActorID: AnyMessageRecipient]
 
   // networking infra
   private let group: EventLoopGroup
@@ -103,25 +105,16 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
     log.info("Bound to: \(self.server.channel!.localAddress!)")
   }
 
-  public func decodeIdentity(from decoder: Decoder) throws -> AnyActorIdentity {
-    let container = try decoder.singleValueContainer()
-
-    // TODO: validate if it actually is a FishyIdentity etc.
-    let identity = try container.decode(FishyIdentity.self)
-
-    return AnyActorIdentity(identity)
-  }
-
-  public func resolve<Act>(_ identity: AnyActorIdentity, as actorType: Act.Type)
+  public func resolve<Act>(id: ActorID, as actorType: Act.Type)
   throws -> Act? where Act: DistributedActor {
     let resolved: Act? = nil
-    log.info("FishyTransport::resolve(\(identity), as: \(actorType)) -> \(String(describing: resolved))")
+    log.info("FishyTransport::resolve(\(id), as: \(actorType)) -> \(String(describing: resolved))")
     return resolved
   }
 
-  public func assignIdentity<Act>(_ actorType: Act.Type) -> AnyActorIdentity where Act: DistributedActor {
-    let id = AnyActorIdentity(FishyIdentity(transport: self, type: "\(actorType)"))
-    log.debug("FishyTransport::assignIdentity(\(actorType)) -> \(id)")
+  public func assignID<Act>(_ actorType: Act.Type) -> ActorID where Act: DistributedActor, ActorID == Act.ID {
+    let id = FishyIdentity(system: self, type: "\(actorType)")
+    log.debug("FishyTransport::assignID(\(actorType)) -> \(id)")
     return id
   }
 
@@ -133,11 +126,16 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
 
     self.lock.withLockVoid {
       let anyRecipient = AnyMessageRecipient(actor: actor)
-      self.managed[actor.id] = anyRecipient
+      self.managed[actor.id as! ActorID] = anyRecipient
     }
   }
 
-  public func resignIdentity(_ id: AnyActorIdentity) {
+  @inlinable 
+  public func makeInvocation() throws -> Invocation {
+    .init()
+  }
+
+  public func resignID(_ id: ActorID) {
     log.debug("FishyTransport::resignIdentity(\(id))")
     self.lock.withLockVoid {
       self.managed.removeValue(forKey: id)
@@ -145,14 +143,14 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
   }
 
   public func send<Message: Sendable & FishyMessage>(
-      _ message: Message, to recipient: AnyActorIdentity,
+      _ message: Message, to recipient: ActorID,
       expecting responseType: Void.Type
   ) async throws -> Void {
     _ = try await self.send(message, to: recipient, expecting: NoResponse.self)
   }
 
   public func send<Message: Sendable & FishyMessage, Response: Sendable & Codable>(
-    _ message: Message, to recipient: AnyActorIdentity,
+    _ message: Message, to recipient: ActorID,
     expecting responseType: Response.Type = Response.self
   ) async throws -> Response {
     log.debug("Send message", metadata: [
@@ -162,10 +160,10 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
     ])
 
     let encoder = JSONEncoder()
-    encoder.userInfo[.actorTransportKey] = self
+    encoder.userInfo[.actorSystemKey] = self
 
     let decoder = JSONDecoder()
-    decoder.userInfo[.actorTransportKey] = self
+    decoder.userInfo[.actorSystemKey] = self
 
     let response = try await sendEnvelopeRequest(message, to: recipient, encoder: encoder)
 
@@ -189,7 +187,7 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
   }
 
   private func sendEnvelopeRequest<Message: Sendable & FishyActorTransport.FishyMessage>(
-      _ message: Message, to recipient: AnyActorIdentity, 
+      _ message: Message, to recipient: ActorID, 
       encoder: JSONEncoder
   ) async throws -> HTTPClient.Response {
     try await InstrumentationSystem.tracer.withSpan(message.functionIdentifier) { span in
@@ -201,7 +199,7 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
         InstrumentationSystem.instrument.inject(baggage, into: &envelope.metadata, using: MessageEnvelopeMetadataInjector())
       }
 
-      var recipientURI: String.SubSequence = "\(recipient.underlying)"
+      var recipientURI: String.SubSequence = "\(recipient)"
 
       let requestData = try encoder.encode(envelope)
       log.debug("Send envelope request", metadata: [
@@ -270,8 +268,8 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
       // as it may need to attempt to decode actor references.
       let encoder = JSONEncoder()
       let decoder = JSONDecoder()
-      encoder.userInfo[.actorTransportKey] = self
-      decoder.userInfo[.actorTransportKey] = self
+      encoder.userInfo[.actorSystemKey] = self
+      decoder.userInfo[.actorSystemKey] = self
 
       do {
         return try await known._receiveAny(envelope: envelope, encoder: encoder, decoder: decoder)
@@ -324,7 +322,7 @@ public final class FishyTransport: ActorTransport, @unchecked Sendable, CustomSt
 ///
 /// It uniquely identifies a fishy distributed actor in the system.
 @available(OSX 10.15, *)
-public struct FishyIdentity: ActorIdentity, CustomStringConvertible, Hashable {
+public struct FishyIdentity: Sendable, Codable, Hashable, CustomStringConvertible {
   public let proto: String
   public let host: String
   public let port: Int
@@ -341,10 +339,10 @@ public struct FishyIdentity: ActorIdentity, CustomStringConvertible, Hashable {
   }
 
   /// Create new unique identity.
-  init(transport: FishyTransport, type: String) {
+  init(system: FishyTransport, type: String) {
     self.proto = "fishy"
-    self.host = transport.host
-    self.port = transport.port
+    self.host = system.host
+    self.port = system.port
     self.typeName = type
     self.id = UUID().uuidString
   }
@@ -362,15 +360,53 @@ public struct Envelope: Sendable, Codable {
     case metadata
   }
 
-  public let recipient: AnyActorIdentity
+  public let recipient: FishyIdentity
   public let message: Data
   public var metadata: [String: String]
 
   // Naive implementation, encodes the `message` as bytes blob using the `encoder`.
-  init<Message: Codable>(recipient: AnyActorIdentity, message: Message, encoder: JSONEncoder = JSONEncoder()) throws {
+  init<Message: Codable>(recipient: FishyIdentity, message: Message, encoder: JSONEncoder = JSONEncoder()) throws {
     self.recipient = recipient
     self.message = try encoder.encode(message)
     self.metadata = [:]
+  }
+}
+
+public struct FishyTargetInvocation: DistributedTargetInvocation {
+  public typealias SerializationRequirement = Codable
+    // === Encoding
+    
+    public mutating func recordGenericSubstitution<T>(mangledType: T.Type) throws { 
+      // ... 
+    }
+    public mutating func encodeArgument<Arg: SerializationRequirement>(argument: Arg) throws {
+      // ...
+    }
+    public mutating func recordErrorType<E>(mangledType: E.Type) throws where E : Error {
+      // ... 
+    }
+    public mutating func doneRecording() throws {
+      // ... 
+    }
+
+    // === Decoding
+
+    public mutating func decodeGenericSubstitutions() throws -> [Any.Type] { 
+      [] 
+      }
+    public mutating func argumentDecoder() -> Self.ArgumentDecoder {
+      .init()
+    }
+    public mutating func decodeReturnType() throws -> Any.Type? { 
+      nil 
+    }
+    public mutating func decodeErrorType() throws -> Any.Type? {
+      nil
+    }
+
+
+  public struct ArgumentDecoder: DistributedTargetInvocationArgumentDecoder {
+    public typealias SerializationRequirement = Codable 
   }
 }
 
@@ -386,11 +422,13 @@ public enum NoResponse: Codable, FishyActorTransport.FishyMessage {
 }
 
 extension DistributedActor {
+
+  // TODO: can be removed now
   public nonisolated var requireFishyTransport: FishyTransport {
-    guard let fishy = actorTransport as? FishyTransport else {
+    guard let fishy = actorSystem as? FishyTransport else {
       fatalError("""
                  'Generated' \(#function) not compatible with underlying transport.
-                 Expected \(FishyTransport.self) but got: \(type(of: self.actorTransport))
+                 Expected \(FishyTransport.self) but got: \(type(of: self.actorSystem))
                  """)
     }
     return fishy
@@ -400,22 +438,22 @@ extension DistributedActor {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Errors
 
-public enum FishySerializationError: ActorTransportError {
+public enum FishySerializationError: DistributedActorSystemError {
   case missingActorTransport
   case unableToDecodeResponse(ByteBuffer, expectedType: Any.Type, Error)
 }
 
-public enum FishyMessageError: ActorTransportError {
+public enum FishyMessageError: DistributedActorSystemError {
   case missingResponsePayload(expected: Any.Type)
   case voidReturn
 }
 
-public struct UnknownRecipientError: ActorTransportError {
-  let recipient: AnyActorIdentity
+public struct UnknownRecipientError: DistributedActorSystemError {
+  let recipient: FishyIdentity
 }
 
-public struct RecipientReleasedError: ActorTransportError {
-  let recipient: AnyActorIdentity
+public struct RecipientReleasedError: DistributedActorSystemError {
+  let recipient: FishyIdentity
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

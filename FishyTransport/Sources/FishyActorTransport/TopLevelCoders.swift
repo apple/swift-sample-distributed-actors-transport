@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _Distributed
+
 import class Foundation.JSONDecoder
 import class Foundation.JSONEncoder
 import struct Foundation.Data

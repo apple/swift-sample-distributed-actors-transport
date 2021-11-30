@@ -5,6 +5,7 @@ import PackageDescription
 
 let experimentalFlags = [
   "-Xfrontend", "-enable-experimental-distributed",
+  "-Xfrontend", "-disable-availability-checking",
 ]
 
 /******************************************************************************/

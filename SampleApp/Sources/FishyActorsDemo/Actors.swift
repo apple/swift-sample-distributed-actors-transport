@@ -26,13 +26,13 @@ import NIOFoundationCompat
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Define Distributed Actors
 
+typealias DefaultDistributedActorSystem = FishyTransport
+
 distributed actor ChatRoom {
   let topic: String
   var chatters: Set<Chatter>
 
-  init(topic: String, transport: ActorTransport) {
-    defer { transport.actorReady(self) } // FIXME(distributed): this will be synthesized (not implemented in compiler yet)
-
+  init(topic: String, system: FishyTransport) {
     self.topic = topic
     self.chatters = []
   }
@@ -81,10 +81,6 @@ distributed actor ChatRoom {
 
 distributed actor Chatter {
   var rooms: [ChatRoom: Set<Chatter>] = [:]
-
-  init(transport: ActorTransport) {
-    defer { transport.actorReady(self) } // FIXME(distributed): this will be synthesized (not implemented in compiler yet)
-  }
 
   distributed func join(room: ChatRoom) async throws {
     // join the chat-room

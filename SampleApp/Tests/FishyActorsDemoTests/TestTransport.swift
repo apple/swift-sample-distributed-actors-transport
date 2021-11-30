@@ -21,21 +21,17 @@ final class TestTransport: ActorTransport {
     let id: Int
   }
 
-  func decodeIdentity(from decoder: Decoder) throws -> AnyActorIdentity {
-    fatalError("decodeIdentity(from:) has not been implemented")
-  }
-
-  func resolve<Act>(_ identity: AnyActorIdentity, as actorType: Act.Type) throws -> Act? where Act: DistributedActor {
+  func resolve<Act>(id: ActorID, as actorType: Act.Type) throws -> Act? where Act: DistributedActor {
     fatalError("resolve(_:as:) has not been implemented")
   }
 
-  func assignIdentity<Act>(_ actorType: Act.Type) -> AnyActorIdentity where Act: DistributedActor {
+  func assignID<Act>(_ actorType: Act.Type) -> ActorID where Act: DistributedActor {
     return .init(Identity(id: .random(in: 1...Int.max)))
   }
 
   func actorReady<Act>(_ actor: Act) where Act: DistributedActor {
   }
 
-  func resignIdentity(_ id: AnyActorIdentity) {
+  func resignID(_ id: ActorID) {
   }
 }
