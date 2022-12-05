@@ -2,7 +2,7 @@
 //
 // This source file is part of the swift-sample-distributed-actors-transport open source project
 //
-// Copyright (c) 2018 Apple Inc. and the swift-sample-distributed-actors-transport project authors
+// Copyright (c) 2018-2022 Apple Inc. and the swift-sample-distributed-actors-transport project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -12,12 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
-@testable import FishyActorTransport
+import DistributedSampleHTTP
 
-final class NoopTest: XCTestCase {
-
-  func test_noop() async {
-  }
-
-}
+typealias DefaultDistributedActorSystem = HTTPActorSystem

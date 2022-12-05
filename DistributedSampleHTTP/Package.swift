@@ -16,32 +16,40 @@ import PackageDescription
 // directly, but rather use it as an inspiration for what COULD be done using this
 // language feature.
 let package = Package(
-    name: "swift-sample-distributed-actors",
+    name: "distributed-sample-http",
     platforms: [
-      .macOS(.v13), // because of the 'distributed actor' feature
+        .macOS(.v13), // because of the 'distributed actor' feature
     ],
     products: [
-      // our example app
-      .executable(
-          name: "FishyActorsDemo",
+      .library(
+          name: "DistributedSampleHTTP",
           targets: [
-            "FishyActorsDemo"
+            "DistributedSampleHTTP"
           ]
       ),
     ],
     dependencies: [
-      .package(name: "distributed-sample-http", path: "../DistributedSampleHTTP/"),
-
-      .package(url: "https://github.com/apple/swift-log.git", from: "1.2.0"),
-      .package(url: "https://github.com/apple/swift-argument-parser", from: "0.4.0"),
+      .package(url: "https://github.com/apple/swift-log.git", from: "1.4.1"),
+      .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
+      .package(url: "https://github.com/swift-server/async-http-client.git", branch: "1.13.1"),
     ],
     targets: [
-      .executableTarget(
-          name: "FishyActorsDemo",
+      .target(
+          name: "DistributedSampleHTTP",
           dependencies: [
-            .product(name: "DistributedSampleHTTP", package: "distributed-sample-http"),
+            .product(name: "NIO", package: "swift-nio"),
+            .product(name: "_NIOConcurrency", package: "swift-nio"),
             .product(name: "Logging", package: "swift-log"),
-            .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            .product(name: "AsyncHTTPClient", package: "async-http-client"),
+          ]
+      ),
+
+      // ==== Tests -----
+
+      .testTarget(
+          name: "DistributedSampleHTTPTests",
+          dependencies: [
+            "DistributedSampleHTTP",
           ]
       ),
     ]
