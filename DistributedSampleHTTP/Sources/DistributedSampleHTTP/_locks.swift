@@ -11,6 +11,19 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the swift-sample-distributed-actors-transport open source project
+//
+// Copyright (c) 2018-2022 Apple Inc. and the swift-sample-distributed-actors-transport project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of swift-sample-distributed-actors-transport project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import Darwin
@@ -170,8 +183,8 @@ public final class ConditionLock<T: Equatable> {
 
     let allNSecs: Int64 = timeoutNS + Int64(curTime.tv_usec) * 1000
     var timeoutAbs = timespec(
-        tv_sec: curTime.tv_sec + Int(allNSecs / nsecPerSec),
-        tv_nsec: Int(allNSecs % nsecPerSec)
+            tv_sec: curTime.tv_sec + Int(allNSecs / nsecPerSec),
+            tv_nsec: Int(allNSecs % nsecPerSec)
     )
     assert(timeoutAbs.tv_nsec >= 0 && timeoutAbs.tv_nsec < Int(nsecPerSec))
     assert(timeoutAbs.tv_sec >= curTime.tv_sec)

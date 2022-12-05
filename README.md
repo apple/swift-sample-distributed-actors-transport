@@ -1,34 +1,33 @@
 # swift-sample-distributed-actors-transport
 
-Sample application and `ActorTransport`, associated with `distributed actor` language evolution proposal.
+Sample application showcasing a simplistic `DistributedActorSystem` implementation, associated with `distributed actor` language evolution proposal.
 
 ## Running the sample app
 
-1. Download the latest toolchain from `main` branch, or a built one from a specific PR. 
-
-3. Move it to `Library/Developer/Toolchains/` and point the TOOLCHAIN env variable at it:
-
-```
-export TOOLCHAIN=/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-09-18-a.xctoolchain
-```
+> Note: Distributed actors are part of Swift since Swift 5.7, so make sure you are using a recent-enough Swift to run this sample.
 
 To run the sample app, use the following command:
 
 ```
 cd SampleApp
-DYLD_LIBRARY_PATH=$TOOLCHAIN/usr/lib/swift/macosx $TOOLCHAIN/usr/bin/swift run FishyActorsDemo
+swift run FishyActorsDemo 
 ```
-
-all necessary flags to build this pre-release feature are already enabled as unsafe flags in `Package.swift`.
 
 If you wanted to perform the invocation manually, it would look something like this:
 
-```
-export TOOLCHAIN=/Library/Developer/Toolchains/swift-PR-39087-1109.xctoolchain
-DYLD_LIBRARY_PATH=$TOOLCHAIN/usr/lib/swift/macosx $TOOLCHAIN/usr/bin/swift run FishyActorsDemo
-```
+### The sample `DistributedActorSystem` implementation
 
-setting the `DYLD_LIBRARY_PATH` is important, so don't forget it.
+This project includes a sample implementation of the [`DistributedActorSystem`](https://developer.apple.com/documentation/distributed/distributedactorsystem),
+that ships in the `Distributed` module along with Swift 5.7+. A distributed actor system is what enables actors to be declared as `distributed actor`, and 
+make calls to them across process boundaries.
+
+The underlying transport is independent of the language feature that defines the `distributed actor` and related types, and can be implemented by end-users.
+One such example implementation is the `HTTPActorSystem` in this sample, which attempts a _very simplistic_ but relatively simple to follow implementation approach.
+
+For a more advanced and feature rich implementation of a distributed actor system, designed for high performance distributed clusters for use in data centers
+please refer to the `DistributedCluster` located here: https://github.com/apple/swift-distributed-actors/
+
+We also recommend viewing the WWDC 2022 talk introducing the distributed actors language feature: **[WWDC 2022: Meet distributed actors in Swift](https://developer.apple.com/videos/play/wwdc2022/110356/)**.
 
 ### Sample output
 
@@ -70,66 +69,3 @@ Notice that the simplified ID printout contains the port number of the node the 
 This sample is a distributed application created from just a single process, but all the "nodes" communicate through networking with eachother.
 The same application could be launched on different physical hosts (and then would have different IP addresses), this is what location transparency of distributed actors enables us to do.
 
-### Distributed Tracing
-
-Additionally, the calls can also be traced using "Swift Distributed Tracing". To use tracing for the sample app, start the services in [`docker-compose.yaml`](SampleApp/docker-compose.yaml), then run the sample again.
-
-```sh
-docker compose -p fishy-transport-sample up -d
-```
-
-Afterwards, open Jaeger [http://localhost:16686](http://localhost:16686) and you'll see traces similar to this:
-
-![Jaeger Example Trace](images/jaeger-trace.png)
-
-### Experimental flags
-
-> This project showcases **EXPERIMENTAL** language features, and in order to access them the `-enable-experimental-distributed` flag must be set.
-
-The project is pre-configured with a few experimental flags that are necessary to enable distributed actors, these are configured in each target's `swiftSettings`:
-
-```swift
-      .target(
-          name: "FishyActorTransport",
-          dependencies: [
-            ...
-          ],
-          swiftSettings: [
-            .unsafeFlags([
-              "-Xfrontend", "-enable-experimental-distributed",
-              "-Xfrontend", "-validate-tbd-against-ir=none",
-              "-Xfrontend", "-disable-availability-checking", // availability does not matter since _Distributed is not part of the SDK at this point
-            ])
-          ]),
-```
-
-## SwiftPM Plugin
-
-Distributed actor transports are expected to ship with an associated SwiftPM plugin that takes care of source generating the necessary "glue" between distributed functions and the transport runtime.
-
-Plugins are run automatically when the project is build, and therefore add no hassle to working with distributed actors.
-
-### Verbose mode
-
-It is possible to force the plugin to run in `--verbose` mode by setting the `VERBOSE` environment variable, like this:
-
-
-```
-VERBOSE=true DYLD_LIBRARY_PATH=$TOOLCHAIN/usr/lib/swift/macosx $TOOLCHAIN/usr/bin/swift run FishyActorsDemo
-
-Analyze: /Users/ktoso/code/fishy-actor-transport/SampleApp/Sources/FishyActorsDemo/_PrettyDemoLogger.swift
-Analyze: /Users/ktoso/code/fishy-actor-transport/SampleApp/Sources/FishyActorsDemo/Actors.swift
-  Detected distributed actor: ChatRoom
-    Detected distributed func: join
-    Detected distributed func: message
-    Detected distributed func: leave
-  Detected distributed actor: Chatter
-    Detected distributed func: join
-    Detected distributed func: chatterJoined
-    Detected distributed func: chatRoomMessage
-Analyze: /Users/ktoso/code/fishy-actor-transport/SampleApp/Sources/FishyActorsDemo/main.swift
-Generate extensions...
-WARNING: This is only a *mock* sample plugin implementation, real functions won't be generated!
-  Generate 'FishyActorTransport' extensions for 'distributed actor ChatRoom' -> file:///Users/ktoso/code/fishy-actor-transport/SampleApp/.build/plugins/outputs/sampleapp/FishyActorsDemo/FishyActorTransportPlugin/GeneratedFishyActors_1.swift
-  Generate 'FishyActorTransport' extensions for 'distributed actor Chatter' -> file:///Users/ktoso/code/fishy-actor-transport/SampleApp/.build/plugins/outputs/sampleapp/FishyActorsDemo/FishyActorTransportPlugin/GeneratedFishyActors_1.swift
-```
