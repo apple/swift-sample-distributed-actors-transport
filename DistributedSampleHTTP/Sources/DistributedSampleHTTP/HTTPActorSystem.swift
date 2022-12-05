@@ -247,7 +247,6 @@ public final class HTTPActorSystem: DistributedActorSystem, @unchecked Sendable 
   func sendEnvelopeRequest(_ invocation: InvocationEncoder,
                            target: RemoteCallTarget,
                            to recipient: ActorID) async throws -> HTTPClient.Response {
-    // try await InstrumentationSystem.tracer.withSpan(message.functionIdentifier) { span in
     let callID = UUID()
     // Prepare the message envelope
     let envelope: RemoteCallEnvelope =
@@ -255,11 +254,6 @@ public final class HTTPActorSystem: DistributedActorSystem, @unchecked Sendable 
                     recipient: recipient,
                     target: target,
                     callID: callID)
-
-//        // inject metadata values to propagate for distributed tracing
-//        if let baggage = Baggage.current {
-//            InstrumentationSystem.instrument.inject(baggage, into: &envelope.metadata, using: MessageEnvelopeMetadataInjector())
-//        }
 
     let requestData = try invocation.encoder.encode(envelope)
     log.debug("Send request to \(recipient.uri)", metadata: [
@@ -273,12 +267,9 @@ public final class HTTPActorSystem: DistributedActorSystem, @unchecked Sendable 
     ])
 
     return response
-    // }
   }
 
-
   private func sendHTTPRequest(requestURI: String, target: RemoteCallTarget, requestData: Data) async throws -> HTTPClient.Response {
-    // try await InstrumentationSystem.tracer.withSpan("HTTP POST", ofKind: .client) { span in
     let url: String
     if let simpleMethodName = target.methodBaseName {
       url = "\(requestURI)/\(simpleMethodName)"
@@ -292,17 +283,13 @@ public final class HTTPActorSystem: DistributedActorSystem, @unchecked Sendable 
               "Content-Type": "application/json"
             ],
             body: .data(requestData))
-    // span.attributes["http.method"] = "POST"
-    // span.attributes["http.url"] = requestURI
 
     let future = client.execute(
             request: request,
             deadline: .now() + .seconds(3)) // A real implementation would allow configuring these (i.e. pick up a task-local deadline)
 
     let response = try await future.get()
-    // span.attributes["http.status_code"] = Int(response.status.code)
     return response
-    // }
   }
 
   public func makeInvocationEncoder() -> InvocationEncoder {
@@ -606,47 +593,21 @@ public struct RemoteCallReply<Value: Codable>: Encodable, Decodable {
   }
 
   public init(from decoder: Decoder) throws {
-//        guard let context = decoder.actorSerializationContext else {
-//            throw SerializationError.missingSerializationContext(decoder, Self.self)
-//        }
-
     let container = try decoder.container(keyedBy: CodingKeys.self)
     self.callID = try container.decode(CallID.self, forKey: .callID)
 
-//        let wasThrow = try container.decodeIfPresent(Bool.self, forKey: .wasThrow) ?? false
-//        if wasThrow {
-//            let errorManifest = try container.decode(Serialization.Manifest.self, forKey: .thrownErrorManifest)
-//            let summonedErrorType = try context.serialization.summonType(from: errorManifest)
-//            guard let errorAnyType = summonedErrorType as? (Error & Codable).Type else {
-//                throw SerializationError(.notAbleToDeserialize(hint: "manifest type results in [\(summonedErrorType)] type, which is NOT \((Error & Codable).self)"))
-//            }
-//            self.thrownError = try container.decode(errorAnyType, forKey: .thrownError)
-//            self.value = nil
-//        } else {
+    // TODO: handle throws here if we wanted to
     self.value = try container.decode(Value.self, forKey: .value)
-    // self.thrownError = nil
-//        }
   }
 
   public func encode(to encoder: Encoder) throws {
-//        guard let context = encoder.actorSerializationContext else {
-//            throw SerializationError.missingSerializationContext(encoder, Self.self)
-//        }
-
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(self.callID, forKey: .callID)
 
-    // TODO: error handling
-//        if let thrownError = self.thrownError {
-//            try container.encode(true, forKey: .wasThrow)
-//            let errorManifest = try context.serialization.outboundManifest(type(of: thrownError))
-//            try container.encode(thrownError, forKey: .thrownError)
-//            try container.encode(errorManifest, forKey: .thrownErrorManifest)
-//        } else {
+    // TODO: handle error throws if we wanted to here
     if let value = self.value {
       try container.encode(value, forKey: .value)
     }
-//        }
   }
 
 }
