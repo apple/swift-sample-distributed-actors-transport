@@ -1,6 +1,6 @@
 # swift-sample-distributed-actors-transport
 
-Sample application showcasing a simplistic `DistributedActorSystem` implementation, associated with `distributed actor` language evolution proposal.
+Sample application showcasing a simplistic [`DistributedActorSystem`](https://developer.apple.com/documentation/distributed/distributedactorsystem) implementation, associated with `distributed actor` language evolution proposal.
 
 ## Running the sample app
 
